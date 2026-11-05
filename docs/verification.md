@@ -1,0 +1,81 @@
+# Lensmap verification
+
+## Candidate and scope
+
+Working directory and independent Git root: `/home/ensu/Projects/lensmap`, branch `main`. Initial discovery found only `HANDOFF.md` and an enclosing `/home/ensu/Projects` Git root; `git init --initial-branch=main .` established the separate boundary, initially with no commits or remotes. Nico subsequently authorized checkpointing this working web-app milestone and making local commits at meaningful verified milestones. No sibling project was edited; remote creation/push/publication remain separately authorized actions.
+
+Live setup: Node `v24.16.0`, pnpm `12.15.0`. Pinned workspace tools/dependencies are in the manifests and `pnpm-lock.yaml`. Installed Turbo `2.11.10` documentation was read before defining tasks (see `design.md`).
+
+This is a fresh TypeScript lens experiment. The pruned scratch file was not moved or restored; historical render activity was located but final file-byte equivalence was not established.
+
+## Current subtree-contour experiment
+
+### Live development cache recovery
+
+The user subsequently reproduced a blank page on refresh. The shared development browser showed no rendered content and `d3-polygon.js` returning **504 Outdated Optimize Dep**. The still-running Vite process logged dependency re-optimization failing with ENOENT for the removed Dagre module. This was stale development-optimizer state, not a failing production bundle or a demonstrated layout exception; the earlier HTTP-200 source-module check did not establish dependency-graph loadability.
+
+The owning Lensmap dev process was stopped and replaced with `pnpm --filter @lensmap/web dev --force --host 127.0.0.1 --port 5173 --strictPort`. The native optimizer rebuilt its dependency graph; the exact served polygon import returned HTTP 200, and the actual development browser rendered **36 thoughts and 39 connections**. The rendered page was inspected after navigation, and no application/layout logic was changed for this operational recovery. Production and live-development verification are separate evidence surfaces.
+
+### Layout validation
+
+- `pnpm exec biome check --write . && pnpm check && pnpm test:e2e`: exit 0. Biome checked 38 files without fixes in the final check phase; TypeScript/Vite passed. **33 unit tests passed** across four suites, including six layout tests. **5 Chromium tests passed**, preserving node-start drag/touch cancellation, uniform zoom, crowded-focus body separation, narrow Overview and sidebar/source semantics.
+- Two new owning regressions failed on the previous fixed-fan layout, then passed: equally populous broad/narrow subtrees receive different angular room, and neighbouring broad sibling contours do not interleave. The four earlier radial-order/local-link/pin/reference tests remain passing. Generic tidy-tree polar coordinates were considered; native D3 hulls were reused for this parent-relative contour policy rather than introducing a custom hull implementation.
+- Before/after probes loaded the real parser, projection and clearance modules through Vite, using the same 36-node/39-edge source, viewport 1016×670, unit scene zoom and strength 1.1. File digests confirmed `lens.ts`, `clearance.ts`, the default sample and positioned sample unchanged. This was a bounded diagnostic, not a new performance gate or a golden snapshot freezing editable source.
+
+| Representative focus | Nominal circle area retained by clearance, fixed-fan → contours | Mean per-circle radius retained, fixed-fan → contours | Circles limited, fixed-fan → contours |
+| -------------------- | --------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------- |
+| Night ferry          | 65.7% → 73.4%                                                   | 73.4% → 79.6%                                         | 31 → 31                               |
+| A step-free pier     | 65.0% → 69.7%                                                   | 72.4% → 71.0%                                         | 29 → 30                               |
+
+Area retention is the sum of squared limited scales divided by the sum of squared nominal scales in each layout, not an absolute-area or frame-rate measurement. The pier view gives more area to prominent circles, but its mean radius retention is slightly lower and one additional context circle is limited: this is not a uniform improvement for every leaf.
+
+- New Overview was inspected first, then focused 200% Lens, with the saved fixed-fan Overview as reference. The blue forecast and amber access subtrees now occupy separate coherent regions rather than interleaving. Local links remain compact in the sample; focused context can still be small or intentionally cropped at maximum zoom. Cross-link crossings remain expected overlay topology.
+- Convex contours are conservative, and manually constrained branches can diverge from their ideal template. Existing component-root placement and fine collision relaxation remain; no globally optimal arbitrary-forest/pin packing or large-graph/motion comfort guarantee is claimed. Lens/clearance settings were not retuned to mask layout defects.
+
+## Earlier radial, clearance and gesture evidence
+
+- `pnpm install --frozen-lockfile && pnpm format && pnpm check && pnpm test:e2e && git diff --check`: exit 0 on the final application source. Frozen installation accepted the final dependency graph; Dagre was removed after its last source consumer was replaced. Biome checked 36 files without fixes in the check phase, and TypeScript/Vite passed.
+- **31 unit tests passed** in four suites: eight projection/camera tests, fifteen schema/parser/document tests, four radial-layout tests, and four clearance tests. The focused radial tests all failed against the old left-to-right layout before passing with parent-relative placement, explicit-coordinate preservation and reference-edge independence.
+- **5 Chromium tests passed**, no skips. Existing navigation, uniform whole-scene zoom, narrow Overview, sidebar and Apply checks remain passing. New real-UI regressions cover all-circle body separation around A step-free pier at maximum 200% zoom and node-start dragging without selection, followed by normal click/Space activation. The existing mobile test additionally exercises node-start touch dragging, touch cancellation and a subsequent zoom-control click.
+- Both new browser regressions failed on the prior app before correction: the crowded-focus check reported overlapping Tide window / Sandbar markers circle bodies, and starting a drag on Weather left its rendered position unchanged. The initial pure-clearance seam was absent; its four tests then passed with the implemented limiter.
+- Clearance changes only projected scales; centres and the radial geometry are fixed. Unit coverage checks competing pair constraints, central priority, source/order independence, continuous small-pan/strength changes, zero-strength bypass and finite positive context dots for coincident centres. Overview retains a uniform undistorted scale; the existing browser regression still measures uniform node/edge zoom after clearance.
+- Actual crowded-focus and undistorted radial Overview captures were inspected under ignored `apps/web/test-results/`. Circle-body crowding is resolved in the focused sample; peripheral labels can still be small, cross-links still cross, and maximum zoom intentionally crops peripheral content. This is not a physical-device comfort, universal readability or large-graph performance qualification. Coincident/too-close authored centres cannot guarantee separation while preserving visible dots and fixed centres.
+- The loopback development App entry returned HTTP 200 with clearance and node-capture wiring present. The saved positioned sample still has its original SHA-256 `4eadb348c46baafffadfba6c2297393af056fb0db4900f60ef59e750bfec7ba9`; the automatic sample data/topology was not edited during this experiment.
+- Vite retains its **non-blocking chunk-size warning** (about 556 kB minified / 171 kB gzip). No suppression or bundle/performance acceptance was added. No commits, remotes, sibling-project changes or publication.
+
+## Earlier playground and packed-lens evidence
+
+- `pnpm format && pnpm check && pnpm test:e2e && git diff --check`: exit 0 after the final source edits. Biome checked 31 files without fixes in the check phase. TypeScript and the production build passed; Turbo executed all three tasks before the browser suite reused the unchanged local build.
+- **23 unit tests passed** in two suites: eight projection/camera tests and fifteen versioned-document/normalization/layout tests. Counts are distinct test identities, not the sum of reruns.
+- **3 Chromium tests passed**, no skips. The rendered checks cover all initial lens node bounds, selection/prose navigation without extra edges, keyboard/pointer/wheel/reset controls, undistorted/narrow overview fitting, synthetic touch panning, real YAML Apply, Markdown summaries, preserved invalid drafts/last-valid topology, independent section disclosure, desktop pointer/keyboard resizing, an intermediate desktop viewport, stacked mobile layout, empty documents and draft-only sample loading.
+- The uniform-zoom regression failed in both pure projection and actual browser geometry before correction. Manual zoom now acts after the lens; the browser suite measures every rendered circle's growth/position and a cross-link curve against the same factor, while checking that zoom controls remain fixed. The shared scene also keeps strokes, arrowheads and text together; Overview's inner SVG does not clip before fitting.
+- The separate logarithmic placement and derivative-based size curves have been removed. A focused regression reproduced unequal position-versus-circle falloff, then passed with one shared nonlinear spatial scale. The final full suite retained the uniform-zoom regression and passed with the expanded 36-node sample. Sample coordinates and topology were not changed by this tuning.
+- The positioned sample was subsequently preserved byte-for-byte as `apps/web/examples/night-ferry-positioned.yaml` (SHA-256 `4eadb348c46baafffadfba6c2297393af056fb0db4900f60ef59e750bfec7ba9`). The default sample has all 36 position fields removed, and native parsed-document comparison confirmed it is otherwise identical. The same 23 unit and 3 browser tests passed with automatic layout as the new default; no lens/layout parameters changed for that experiment.
+- Focused document tests failed before the schema/parser implementation existed, then all fifteen passed. The actual `sample.yaml` is parsed through the same code when the app starts; it is not a separate hardcoded graph.
+- The earlier peripheral-packing regression reproduced offscreen behavior. Its bounded logarithmic implementation has since been superseded by the shared nonlinear scale above; bounds, monotonic ordering and near-neighbour prominence checks remain passing. Source coordinates and the uniform overview were not rewritten.
+- A browser resize assertion reproduced a too-narrow map at an intermediate desktop width. Matching the observer's breakpoint to the CSS viewport breakpoint fixed it, and the final full suite passed.
+- Frozen-lockfile installation passed after adding pinned Zod, YAML and Dagre. The loopback development app entry was reachable on port 5173.
+- Vite emitted a **non-blocking chunk-size warning** for the current single application bundle (about 591 kB minified / 181 kB gzip). The warning was not suppressed; no bundle-size/performance acceptance is claimed.
+- Desktop lens/overview and desktop/mobile playground captures were generated under ignored `apps/web/test-results/` and inspected for layout/readability. They are not a published deployment.
+
+The current schema is explicitly incomplete v1. Durable saving, advanced editor/Markdown tooling, language server, embedding API, section-anchor ownership and a full-content overview remain unimplemented. Physical motion comfort, large graphs and arbitrary collision avoidance remain hands-on qualification limits.
+
+## Historical initial-slice evidence
+
+- `pnpm install --frozen-lockfile`: exit 0, two workspace projects (root and web); lockfile up to date.
+- Focused initial lens test run failed because the implementation did not yet exist; the implemented projection/camera suite then passed.
+- Final `pnpm format && pnpm check && pnpm test:e2e && git diff --check`: exit 0.
+- Biome: 20 files checked; no fixes needed in the final check.
+- Vitest: **5 tests passed**, one suite. Spatial magnification, radial ordering/continuity, undistorted zero-strength mode, world-space pan/bounded zoom, and narrow overview fitting including node radii.
+- TypeScript: `tsc --noEmit` passed, including application source, unit tests, Vite config, Playwright config and browser tests.
+- Vite production build passed; Turbo reported three successful tasks (test, typecheck, build). The immediately subsequent browser command reused that unchanged successful build from local cache.
+- Playwright/Chromium: **2 tests passed**, no skips. Actual production-rendered checks exercised selection and prose navigation without added edges, keyboard activation/panning, pointer drag, wheel and button zoom, strength/reset, overview mode and uniform scale, narrow node/page bounds, and a CDP-generated touch gesture.
+- Screenshot review exposed accidental browser text selection during map dragging. An assertion added to the existing browser test reproduced the failure (`Received: "A step-free"`); `user-select: none` on the map fixed it. The mode caption was also moved outside the graph after it visibly overlapped an overview node. The final browser run passed with both fixes.
+- `pnpm dev` started Turbo/Vite on `http://127.0.0.1:5173/`; a loopback HTTP GET returned the expected Lensmap development entry.
+- `git diff --check` was supplemented by a source-file whitespace scan because all initial files are untracked; no whitespace issues were found.
+
+Local ignored browser artifacts: `apps/web/test-results/`, including desktop lens, desktop overview and narrow overview PNGs. These are test captures, not a published deployment.
+
+### Initial-slice limits (historical)
+
+Chromium on Arch used Playwright's Ubuntu fallback build and completed successfully. The synthetic touch gesture is not physical-device testing. Real drag/touch comfort, arbitrary overlaps, large-graph behaviour and the user's judgement of the spatial deformation remain unqualified. No YAML parser/editor, persistence, automatic layout, embedded API, language server, or expanded full-content overview is claimed.

@@ -1,0 +1,211 @@
+# Lensmap v1 is incomplete and experimental. This sample is editable.
+version: v1
+nodes:
+  - id: ferry
+    full_text: |
+      # Night ferry
+
+      What would make a little night ferry worth taking? Start with the journey, not the timetable.
+
+      The [tide window](#tides) is a prose reference: following it does **not** add a line to the map.
+
+      - A dependable crossing
+      - A warm place to wait
+      - Room for unexpected stories
+
+    connections:
+      - full_text: |
+          # Weather
+
+          Rain changes the crossing, but it also changes how people wait. A roof can matter as much as a faster boat.
+
+        connections:
+          - id: tides
+            full_text: |
+              # Tide window
+
+              A timetable is a promise made to a moving shoreline.
+
+              **Question:** can the last departure move without leaving someone behind?
+
+              Return to the [night ferry](#ferry).
+
+            connections:
+              - full_text: |
+                  # Tide tables
+
+                  Compare the published prediction with the water at the actual landing.
+
+              - full_text: |
+                  # Sandbar markers
+
+                  A route that was clear last month may have moved after the storms.
+
+              - full_text: |
+                  # Spring tides
+
+                  The largest tidal range changes both the channel and the boarding ramp.
+
+              - full_text: |
+                  # Distant tide gauge
+
+                  An outer-harbor observation may explain a delay that is invisible at the pier.
+
+          - full_text: |
+              # A small forecast
+
+              A plain-language board at the pier. No need to make a traveller interpret a marine chart.
+
+            connections:
+              - node_id: harbor
+              - full_text: |
+                  # Wind flags
+
+                  A small visual signal can communicate more quickly than a paragraph of forecasts.
+
+              - full_text: |
+                  # A squall line
+
+                  The approaching weather matters more than the rain already overhead.
+
+              - full_text: |
+                  # Offshore reports
+
+                  Ask the boats beyond the headland what the sheltered pier cannot show.
+
+              - full_text: |
+                  # Beyond the headland
+
+                  The farthest observation belongs to the same crossing, even when it sits at the edge of attention.
+
+      - full_text: |
+          # Who crosses?
+
+          The cook going home. The early market seller. Someone who just wants to see the lights from the water.
+
+        connections:
+          - full_text: |
+              # A step-free pier
+
+              Access is part of the route, not something added after the boat is chosen.
+
+            connections:
+              - node_id: harbor
+              - full_text: |
+                  # Ramp gradient
+
+                  Check the boarding angle at low water, not only at a convenient midday tide.
+
+              - full_text: |
+                  # Tactile wayfinding
+
+                  The path should still make sense when a sign is difficult to see.
+
+              - full_text: |
+                  # Late bus connection
+
+                  A step-free boat is not enough if the last accessible bus leaves before it docks.
+
+              - full_text: |
+                  # The last mile home
+
+                  Follow the journey all the way from the landing to a traveller's own door.
+
+          - full_text: |
+              # Stories aboard
+
+              What do regular passengers notice that a route planner would miss?
+
+              > The crossing begins before you board.
+
+            connections:
+              - node_id: archive
+              - full_text: |
+                  # Market mornings
+
+                  The early crossing carries baskets, unfinished conversations, and a different rhythm.
+
+              - full_text: |
+                  # Familiar faces
+
+                  A regular passenger may notice an absence before anyone notices a missed ticket.
+
+              - full_text: |
+                  # Songs at the pier
+
+                  Keep a little room in the notes for things that are not operational requirements.
+
+              - full_text: |
+                  # A crossing remembered
+
+                  Someone who moved away still remembers which side of the boat caught the evening light.
+
+      - id: harbor
+        full_text: |
+          # Harbor lights
+
+          Wayfinding, shelter, and a recognisable place to arrive. This branch converges with accessibility and weather.
+
+        connections:
+          - full_text: |
+              # Keep it running
+
+              Maintenance is a recurring connection back to the crossing itself, not a dead-end checklist.
+
+            connections:
+              - node_id: ferry
+              - full_text: |
+                  # Spare lamps
+
+                  An ordinary replacement can keep a small failure from becoming a cancelled crossing.
+
+              - full_text: |
+                  # Workshop rota
+
+                  Leave enough time between shifts for repairs that need care rather than speed.
+
+              - full_text: |
+                  # Winter overhaul
+
+                  The work outside the busy season determines what can be promised during it.
+
+              - full_text: |
+                  # A distant boatyard
+
+                  Some repairs connect the little ferry to skills and suppliers far beyond its own harbor.
+
+      - id: archive
+        full_text: |
+          # Remember the route
+
+          Old tickets, passenger sketches, changing names for the same stretch of water.
+
+        connections:
+          - summary: null
+
+            connections:
+              - full_text: |
+                  # A little ritual
+
+                  Perhaps tea before departure. Perhaps something we have not thought of yet.
+
+                connections:
+                  - full_text: |
+                      # Tea before departure
+
+                      A cup can mark the beginning of a journey without making a ceremony of it.
+
+                  - full_text: |
+                      # A passenger sketchbook
+
+                      Let the route accumulate drawings as well as timetables.
+
+                  - full_text: |
+                      # Returning each year
+
+                      The same crossing can become a quiet measure of what has changed.
+
+                  - full_text: |
+                      # A future tradition
+
+                      Leave this idea far out on the map: it may only become clear after many crossings.

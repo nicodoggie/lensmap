@@ -1,0 +1,51 @@
+# Lensmap schema v1 — incomplete and experimental
+
+`version: v1` selects the current working schema. **v1 is incomplete, not a frozen compatibility promise.** We can add or refine fields within this experimental version while its authoring semantics are being tried. It is independent of the application's package version.
+
+The Zod definition is `apps/web/src/document/v1/schema.ts`. `DocumentSchema` validates structure; `parseSource` then checks document-wide IDs/references and constructs the graph. Keeping schemas independent of YAML parsing, layout and rendering prepares for reuse without creating an empty package now.
+
+## Current shape
+
+```yaml
+version: v1
+nodes:
+  - id: first
+    full_text: |
+      # A starting thought
+
+      This is all **Markdown**. A [prose reference](#shared) navigates without drawing an edge.
+    connections:
+      - A simple Markdown child
+      - - A possible consequence
+        - Another consequence
+      - summary: null
+        connections:
+          - An unnamed thought can still have implications
+      - node_id: shared
+  - id: shared
+    summary: "**A shared idea**"
+    connections:
+      - node_id: first
+```
+
+- The root has `version` (exactly the string `v1`) and `nodes`. Missing/other versions are errors; no legacy version is inferred. `nodes: []` is a valid empty playground.
+- Each top-level entry is a Markdown string or rich node. There is no mandatory central node or automatic document-title node.
+- A rich node supports `id`, `summary`, `full_text`, `position`, and `connections`. It supplies at least one defined content field (`summary` or `full_text`). Summary-only and full-text-only nodes work without duplicated prose.
+- A string is shorthand for `full_text`. Its first line supplies the collapsed Markdown title; later lines remain in the complete note. A supplied summary overrides collapsed presentation. No source text is truncated or rewritten.
+- `summary` / `full_text` accept strings or explicit null. Null/empty title content is an unresolved thought, not a missing grouping wrapper. An object with only `connections` is invalid. Explicit JavaScript `undefined` is not content; a blank YAML value is null.
+- `connections` recursively accepts Markdown strings, rich nodes, reference objects containing only `node_id`, and nested arrays. A bare array introduces a real unresolved middle node connected to its entries; it is not flattened into direct parent edges.
+- IDs are optional, nonempty strings, unique when supplied. They are preserved exactly, not trimmed or slugified. Renderer keys are internal and do not become authored IDs. A `node_id` reference must resolve in the same document; forward references, convergence, self-links and cycles are allowed.
+- `position: {x: 100, y: -40}` supplies absolute, finite numeric coordinates. No ID is needed for positioning. Missing positions get an automatic initial radial branch layout on Apply; explicit coordinates remain exact. Nested children circle each root in source order, then fan outward around their own parents, with subtree contours reserving angular room. References do not reparent or attract nodes. Relative authored coordinates are not implemented; automatic parent-relative placement is not a new schema field or a frozen layout algorithm guarantee.
+- Prose fragment links currently resolve authored node IDs. Heading/section slug ownership, expansion and URL history remain open. Prose links never add graph edges.
+
+## Validation and errors
+
+Objects are strict at the root, node, position and reference boundaries. Unsupported fields are rejected rather than silently stripped. This deliberately describes today's supported subset, not a claim that future v1 will contain only these fields. Mixed reference/content objects, obsolete `items` wrappers, wrong field types, duplicate IDs and unknown references are errors.
+
+The maintained YAML parser handles syntax and duplicate-key errors; unresolved tags/warnings are surfaced rather than quietly discarded. Acyclic aliases may share input data, but recursive YAML object aliases are rejected with guidance to use `node_id` for graph cycles. The parser retains its native alias-expansion protection; Lensmap adds no arbitrary source-length, node-count or graph-depth cap.
+
+Apply is transactional from the UI's perspective: parse/validate/normalize/layout first, then replace the graph. Failure preserves the raw draft, the selected valid graph and its connections. Editing/collapsing/navigating does not re-layout the graph.
+
+## Still incomplete
+
+Document metadata/frontmatter, richer edge metadata, relative coordinates, heading anchors, migration rules, import/export, durable saving, embedded Markdown editing assistance and ID completion are not yet defined or implemented. A textarea rendering YAML is not a language server. See the editable `apps/web/src/sample.yaml` for the current playground input.
