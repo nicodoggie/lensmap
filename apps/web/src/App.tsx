@@ -93,6 +93,18 @@ export default function App() {
     : limitMagnification(projected, nodeRadius, strength);
   const positions = new Map(circles.map((point) => [point.node.key, point]));
   const active = nodes.find((node) => node.key === selected) ?? nodes[0];
+  const incident = edges.filter(
+    (edge) => edge.from === active?.key || edge.to === active?.key,
+  );
+  const connectedEdges = new Set(incident.map((edge) => edge.key));
+  const connectedNodes = new Set(
+    incident.flatMap((edge) => [edge.from, edge.to]),
+  );
+  // Paint selected routes last: unrelated dark edge halos must not cover them.
+  const drawnEdges = [
+    ...edges.filter((edge) => !connectedEdges.has(edge.key)),
+    ...incident,
+  ];
 
   function focusNode(key: string) {
     const node = nodes.find((candidate) => candidate.key === key);
@@ -348,7 +360,7 @@ export default function App() {
                     </marker>
                   ))}
                 </defs>
-                {edges.map((edge) => {
+                {drawnEdges.map((edge) => {
                   const from = positions.get(edge.from);
                   const to = positions.get(edge.to);
                   if (!from || !to) return null;
@@ -377,7 +389,8 @@ export default function App() {
                         data-kind={edge.kind}
                         d={path}
                         stroke={colours[to.node.branch]}
-                        className={`edge ${edge.kind}`}
+                        style={{ color: colours[to.node.branch] }}
+                        className={`edge ${edge.kind} ${connectedEdges.has(edge.key) ? "connected" : ""}`}
                         markerEnd={
                           edge.kind === "cross"
                             ? `url(#arrow-${to.node.branch})`
@@ -395,18 +408,21 @@ export default function App() {
                   <button
                     type="button"
                     key={node.key}
-                    className={`node ${selected === node.key ? "selected" : ""} ${node.unresolved ? "unresolved" : ""}`}
+                    className={`node ${selected === node.key ? "selected" : ""} ${connectedNodes.has(node.key) ? "connected" : ""} ${node.unresolved ? "unresolved" : ""}`}
                     data-node={node.key}
                     data-scale={point.scale * shownCamera.zoom}
                     aria-label={label(node)}
                     aria-pressed={selected === node.key}
                     title={label(node)}
-                    style={{
-                      left: point.x,
-                      top: point.y,
-                      transform: `translate(-50%, -50%) scale(${point.scale})`,
-                      borderColor: colours[node.branch],
-                    }}
+                    style={
+                      {
+                        left: point.x,
+                        top: point.y,
+                        transform: `translate(-50%, -50%) scale(${point.scale})`,
+                        borderColor: colours[node.branch],
+                        "--branch-colour": colours[node.branch],
+                      } as CSSProperties
+                    }
                     onClick={() => focusNode(node.key)}
                   >
                     <span>

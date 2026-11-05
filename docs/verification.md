@@ -8,7 +8,16 @@ Live setup: Node `v24.16.0`, pnpm `12.15.0`. Pinned workspace tools/dependencies
 
 This is a fresh TypeScript lens experiment. The pruned scratch file was not moved or restored; historical render activity was located but final file-byte equivalence was not established.
 
-## Current subtree-contour experiment
+## Current immediate-connection glow
+
+- `pnpm format && pnpm check && pnpm test:e2e`: exit 0. Biome checked 39 files; TypeScript/Vite passed. **33 unit tests and 6 Chromium tests passed**, with no skips. The earlier uniform zoom, crowded-focus separation, navigation, sidebar and pointer/touch checks remain passing.
+- The new renderer-only browser regression applies real v1 source with outgoing/incoming links, a self-loop, a transitive grandchild, an edge between two neighbours and a prose-only target. It verifies the exact highlighted set, actual CSS ring/stroke glows, preserved branch colour/dashes/arrowheads, single-node selection semantics, keyboard-driven updates, Overview retention and an isolated selected node without glowing edges. No duplicate pure helper or schema contract was added for this presentation predicate.
+- The selected-circle refinement uses brightness instead of an extra solid outer ring, while retaining the keyboard-focus outline. Its focused browser regression first failed with pointer-selected Root's outline computed as `solid` rather than `none`; the corrected check also verifies selected-only brightness and an actual keyboard `:focus-visible` ring.
+- Inspected the fixture's `selection-glow.png` and the real sample's `lens-desktop.png` under ignored `apps/web/test-results/`. Direct rings/routes stand out without brightening unrelated context or replacing direction cues. This is static visual emphasis, not a large-graph GPU/performance qualification.
+- A fresh, independently owned local Playwright page loaded the running development app on port 5173: **36 nodes, 39 edges, one selected node, six glowing nodes and five glowing connectors**. Computed connector filters were branch-coloured drop-shadows; there were no script errors or HTTP resource responses at/above 400. The probe closed only its own browser and did not reload the user's tab or draft.
+- No dependency, sample, layout, lens or clearance changes. The existing non-blocking Vite chunk-size advisory remains unsuppressed.
+
+## Earlier subtree-contour experiment
 
 ### Live development cache recovery
 

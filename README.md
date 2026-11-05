@@ -20,6 +20,7 @@ After adding/removing dependencies, a long-running Vite process can retain obsol
 - Drag the map background **or a thought** to pan. A short click selects; movement past a small threshold pans without activating the thought. Arrow keys pan when the map has focus.
 - Scroll or use the −/+ buttons to zoom the entire graph uniformly, including peripheral circles, text and edges. Lens strength is a separate control for focus/context deformation; zoom does not change that relative sizing profile.
 - Tab to a thought and press Enter/Space, or click it, to select and centre it.
+- Selection softly glows the circle outlines of the selected thought and its immediate explicit neighbours, plus their incident connectors. Incoming/outgoing links and cycles count; more distant neighbours and prose-only references do not. The selected circle is slightly brighter instead of gaining an extra solid ring. Branch colours, cross-link dashes/arrows and keyboard focus rings remain visible in both Lens and Overview.
 - Follow the Markdown prose reference in the notes: selection changes, graph edges do not.
 - Switch to **Overview** for undistorted positions; select a node to return to the lens. Overview is read-only navigation, not a full-content expansion.
 - **Reset view** restores the initial camera, thought, lens strength and mode.

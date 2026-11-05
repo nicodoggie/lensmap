@@ -426,3 +426,155 @@ test("node-start dragging pans without activation while clicks and keyboard stil
   await page.keyboard.press("Space");
   await expect(ferry).toHaveAttribute("aria-pressed", "true");
 });
+
+test("selection glow follows only immediate explicit connections", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await page.getByText("YAML playground", { exact: true }).click();
+  await page.getByRole("textbox", { name: "YAML source" }).fill(
+    JSON.stringify({
+      version: "v1",
+      nodes: [
+        {
+          id: "root",
+          summary: "Root",
+          full_text: "# Root\n\nA [prose link](#prose).",
+          position: { x: 0, y: 0 },
+          connections: [
+            {
+              id: "child",
+              summary: "Child",
+              position: { x: -220, y: -80 },
+              connections: [
+                { summary: "Grandchild", position: { x: -420, y: -140 } },
+                { node_id: "incoming" },
+              ],
+            },
+            { node_id: "outgoing" },
+            { node_id: "root" },
+          ],
+        },
+        {
+          id: "incoming",
+          summary: "Incoming",
+          position: { x: 0, y: 220 },
+          connections: [{ node_id: "root" }],
+        },
+        { id: "outgoing", summary: "Outgoing", position: { x: 230, y: -50 } },
+        { id: "prose", summary: "Prose only", position: { x: 340, y: 240 } },
+      ],
+    }),
+  );
+  await page.getByRole("button", { name: "Apply YAML", exact: true }).click();
+  const highlighted = () =>
+    page
+      .locator(".node.connected, .node.selected")
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute("aria-label")).sort(),
+      );
+  await expect
+    .poll(highlighted)
+    .toEqual(["Child", "Incoming", "Outgoing", "Root"]);
+  await expect(page.locator("[data-edge]")).toHaveCount(6);
+  const keys = await page
+    .locator("[data-node]")
+    .evaluateAll((elements) =>
+      Object.fromEntries(
+        elements.map((element) => [
+          element.getAttribute("aria-label") ?? "",
+          element.getAttribute("data-node") ?? "",
+        ]),
+      ),
+    );
+  const expected = new Set([
+    `${keys.Root}-${keys.Child}`,
+    `${keys.Root}-${keys.Outgoing}`,
+    `${keys.Incoming}-${keys.Root}`,
+    `${keys.Root}-${keys.Root}`,
+  ]);
+  const paths = await page.locator("[data-edge]").evaluateAll((elements) =>
+    elements.map((element) => ({
+      edge: element.getAttribute("data-edge") ?? "",
+      connected: element.classList.contains("connected"),
+      filter: getComputedStyle(element).filter,
+      kind: element.getAttribute("data-kind"),
+      dash: getComputedStyle(element).strokeDasharray,
+      marker: element.getAttribute("marker-end"),
+    })),
+  );
+  for (const path of paths) {
+    expect(path.connected).toBe(expected.has(path.edge));
+    if (path.connected) {
+      expect(path.filter).not.toBe("none");
+      if (path.kind === "cross") {
+        expect(path.dash).not.toBe("none");
+        expect(path.marker).toContain("arrow-");
+      }
+    } else expect(path.filter).toBe("none");
+  }
+  const plainShadow = await page
+    .getByRole("button", { name: "Grandchild", exact: true })
+    .evaluate((element) => getComputedStyle(element).boxShadow);
+  for (const name of ["Root", "Child", "Incoming", "Outgoing"]) {
+    const button = page.getByRole("button", { name, exact: true });
+    expect(
+      await button.evaluate((element) => getComputedStyle(element).boxShadow),
+    ).not.toBe(plainShadow);
+    if (name !== "Root")
+      await expect(button).toHaveAttribute("aria-pressed", "false");
+  }
+  const outgoing = page.getByRole("button", { name: "Outgoing", exact: true });
+  const outgoingColour = await outgoing.evaluate(
+    (element) => getComputedStyle(element).borderColor,
+  );
+  expect(
+    await page
+      .locator(`[data-edge="${keys.Root}-${keys.Outgoing}"]`)
+      .evaluate((element) => getComputedStyle(element).stroke),
+  ).toBe(outgoingColour);
+  await page.getByText("YAML playground", { exact: true }).click();
+  const root = page.getByRole("button", { name: "Root", exact: true });
+  await root.click();
+  await expect(root).toHaveCSS("outline-style", "none");
+  await expect(outgoing).toHaveCSS("filter", "none");
+  expect(
+    await root.evaluate((element) =>
+      Number(
+        getComputedStyle(element).filter.match(/brightness\(([\d.]+)\)/)?.[1] ??
+          "1",
+      ),
+    ),
+  ).toBeGreaterThan(1);
+  await page.screenshot({
+    path: testInfo.outputPath("selection-glow.png"),
+    fullPage: true,
+  });
+
+  await page.getByRole("button", { name: "Child", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  const child = page.getByRole("button", { name: "Child", exact: true });
+  await expect(child).toBeFocused();
+  expect(
+    await child.evaluate((element) => element.matches(":focus-visible")),
+  ).toBe(true);
+  await expect(child).toHaveCSS("outline-style", "solid");
+  await expect
+    .poll(highlighted)
+    .toEqual(["Child", "Grandchild", "Incoming", "Root"]);
+  await expect(
+    page.locator(`[data-edge="${keys.Root}-${keys.Root}"]`),
+  ).not.toHaveClass(/connected/);
+  await expect(
+    page.locator(`[data-edge="${keys.Child}-${keys.Incoming}"]`),
+  ).toHaveClass(/connected/);
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  await expect
+    .poll(highlighted)
+    .toEqual(["Child", "Grandchild", "Incoming", "Root"]);
+  await page.getByRole("button", { name: "Prose only", exact: true }).focus();
+  await page.keyboard.press("Space");
+  await expect.poll(highlighted).toEqual(["Prose only"]);
+  await expect(page.locator("[data-edge].connected")).toHaveCount(0);
+  await expect(page.locator("[data-edge]")).toHaveCount(6);
+});

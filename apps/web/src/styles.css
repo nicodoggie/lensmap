@@ -206,6 +206,11 @@ h1 {
   stroke-dasharray: 7 6;
   stroke-width: 2;
 }
+.edge.connected {
+  stroke-width: 3.5;
+  opacity: 1;
+  filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 6px currentColor);
+}
 .edge-halo {
   fill: none;
   stroke: #14202a;
@@ -234,14 +239,21 @@ h1 {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.node.connected,
+.node.selected {
+  border-width: 2.5px;
+  box-shadow:
+    0 0 5px 1px var(--branch-colour),
+    0 0 18px color-mix(in srgb, var(--branch-colour) 80%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--branch-colour) 30%, transparent);
+}
 .node:hover {
   background: #334754;
   z-index: 3;
 }
 .node.selected {
   background: #2d4651;
-  outline: 2px solid #d6f0e8;
-  outline-offset: 5px;
+  filter: brightness(1.15);
   z-index: 2;
 }
 .node:focus-visible {
