@@ -18,6 +18,7 @@ interface Controls {
   maximum: number;
   onIntent: () => void;
   onPan: (delta: Point) => void;
+  onZoom: (factor: number) => void;
   onSpatial: (direction: Direction) => void;
   onTraverse: (direction: Direction) => void;
   onAccept: () => void;
@@ -66,6 +67,13 @@ export function useMapKeyboard(
     if (!eligible(event.target)) return;
     if (event.isComposing || event.metaKey || event.altKey) {
       stop();
+      return;
+    }
+    if (event.ctrlKey && ["=", "+", "-"].includes(event.key)) {
+      event.preventDefault();
+      controls.onIntent();
+      stop();
+      controls.onZoom(event.key === "-" ? 1 / 1.2 : 1.2);
       return;
     }
     if (["Control", "Shift", "Alt", "Meta", "Tab"].includes(event.key)) stop();

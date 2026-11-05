@@ -32,6 +32,86 @@ const styles = (page: Page) =>
     .locator("[data-node]")
     .evaluateAll((elements) => elements.map((e) => e.getAttribute("style")));
 
+test("Ctrl zoom shortcuts intercept browser defaults only for the focused viewer", async ({
+  page,
+}) => {
+  const map = await setup(page);
+  const alpha = page.getByRole("button", { name: "Alpha", exact: true });
+  const zoom = page.getByLabel("Zoom level", { exact: true });
+  await page.evaluate(() => {
+    document.addEventListener("keydown", (event) => {
+      if (["=", "+", "-"].includes(event.key)) {
+        document.body.dataset.zoomShortcut = JSON.stringify({
+          key: event.key,
+          prevented: event.defaultPrevented,
+        });
+      }
+    });
+  });
+  const prevented = () =>
+    page.evaluate(
+      () => JSON.parse(document.body.dataset.zoomShortcut ?? "{}").prevented,
+    );
+  const beforeMap = await map.boundingBox();
+  const beforeNode = await alpha.boundingBox();
+  const beforeRatio = await page.evaluate(() => devicePixelRatio);
+  await page.getByRole("button", { name: "Beta", exact: true }).click();
+  await map.focus();
+  await page.keyboard.press("Control+=");
+  await expect(zoom).toHaveText("102%");
+  expect(await prevented()).toBe(true);
+  await page.clock.runFor(600);
+  await expect(alpha).toHaveAttribute("aria-pressed", "true");
+  const afterNode = await alpha.boundingBox();
+  if (!beforeNode || !afterNode) throw Error("Zoomed thought not rendered");
+  expect(afterNode.width / beforeNode.width).toBeCloseTo(1.2, 4);
+  expect(await map.boundingBox()).toEqual(beforeMap);
+  expect(await page.evaluate(() => devicePixelRatio)).toBe(beforeRatio);
+  await alpha.focus();
+  await page.keyboard.press("Control+Shift+Equal");
+  await expect(zoom).toHaveText("122%");
+  expect(
+    await page.evaluate(
+      () => JSON.parse(document.body.dataset.zoomShortcut ?? "{}").key,
+    ),
+  ).toBe("+");
+  expect(await prevented()).toBe(true);
+  await page.keyboard.press("Control+-");
+  await expect(zoom).toHaveText("102%");
+  await page.keyboard.press("Control+-");
+  await expect(zoom).toHaveText("85%");
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect(zoom).toHaveText("102%");
+  await map.focus();
+  await page.keyboard.press("Control+-");
+  await expect(zoom).toHaveText("85%");
+  await page.keyboard.press("Enter");
+  await expect(map).toHaveAttribute("data-view", "neighbourhood");
+  await page.keyboard.press("Control+=");
+  await expect(zoom).toHaveText("120%");
+  await page.keyboard.press("Escape");
+  await expect(zoom).toHaveText("85%");
+  await page.getByRole("button", { name: "Overview", exact: true }).click();
+  const fitted = await zoom.textContent();
+  await map.focus();
+  await page.keyboard.press("Control+-");
+  await expect(zoom).toHaveText(fitted ?? "");
+  expect(await prevented()).toBe(true);
+  for (const control of [
+    page.getByRole("textbox", { name: "YAML source" }),
+    page.getByRole("button", { name: "Zoom in", exact: true }),
+    page.getByRole("link", { name: "prose only", exact: true }),
+  ]) {
+    // Leave Overview first so its disabled zoom button remains focusable.
+    await page.getByRole("button", { name: "Lens", exact: true }).click();
+    await control.focus();
+    const priorZoom = await zoom.textContent();
+    await page.keyboard.press("Control+=");
+    await expect(zoom).toHaveText(priorZoom ?? "");
+    expect(await prevented()).toBe(false);
+  }
+});
+
 test("Ctrl browses without changing camera/selection; Space accepts and Shift follows edges from the visible target", async ({
   page,
 }, info) => {

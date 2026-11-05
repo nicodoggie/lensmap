@@ -8,7 +8,14 @@ Live setup: Node `v24.16.0`, pnpm `12.15.0`. Pinned workspace tools/dependencies
 
 This is a fresh TypeScript lens experiment. The pruned scratch file was not moved or restored; historical render activity was located but final file-byte equivalence was not established.
 
-## Current keyboard navigation trial
+## Focused zoom shortcuts
+
+- `pnpm exec biome check --write . && pnpm check && pnpm test:e2e && git diff --check` passed: **43 unit tests in six suites and 15 Chromium tests**, no skips; Biome checked 49 files, TypeScript/Vite passed. The existing chunk-size advisory remains unsuppressed.
+- Added Ctrl+= / Ctrl++ / Ctrl+- to the existing viewer/node focus gate, sharing the zoom buttons' action and existing camera limits. Focused Overview consumes the shortcut without changing its fit; neighbour-view zoom remains separate from the retained normal camera.
+- The new rendered regression first failed with zoom remaining at `85%` instead of `102%`, then passed after implementation. It verifies native delivered `=`/`+`/`-` keys, event default prevention only inside the viewer, node scaling with unchanged viewer bounds/device pixel ratio, queued-click cancellation, button equivalence, local zoom restoration, and non-interception with editor, toolbar/zoom-control or sidebar-link focus. Browser events are inspected after bubbling; native browser UI zoom outside the page and every platform/layout shortcut are not claimed as independently qualified.
+- No new dependencies, schema fields, layout/projection algorithms or global keyboard listeners. The keyboard feature reuses the existing zoom limits and magnification pipeline rather than adding duplicate configuration or a second zoom implementation.
+
+## Keyboard navigation milestone
 
 - `pnpm exec biome check --write . && pnpm check && pnpm test:e2e && git diff --check` passed: **43 unit tests in six suites and 14 Chromium tests**, no skips; TypeScript, Biome and Vite passed. The existing Vite chunk-size advisory remains unsuppressed. Native tooling owns configuration checks; no dependencies, Turbo configuration, schema, sample, layout, lens or clearance algorithms changed.
 - Owning RED: the pure navigation seam was absent. The rendered fixture initially exposed a test-only YAML quoting error; replacing it with a valid block scalar and asserting fixture load isolated the genuine missing target-cue RED. The six pure tests now cover bounded centre selection, rotated soft orbitals, proximity/no-wrap/tie choices, incoming/outgoing explicit-only traversal with hidden context, diagonal normalization and exact integrated acceleration/caps.

@@ -85,6 +85,7 @@ export default function App() {
     maximum: maximumPanSpeed,
     onIntent: cancelActivation,
     onPan: panView,
+    onZoom: zoomView,
     onSpatial: moveTarget,
     onTraverse: traverseTarget,
     onAccept: () => {
@@ -193,6 +194,12 @@ export default function App() {
   function panView(delta: { x: number; y: number }) {
     setKeyboardTarget(undefined);
     setViewCamera((current) => panCamera(current, delta));
+  }
+
+  function zoomView(factor: number) {
+    cancelActivation();
+    keyboard.stop();
+    if (!overview) setViewCamera((current) => zoomCamera(current, factor));
   }
 
   function moveTarget(direction: Direction) {
@@ -747,10 +754,7 @@ export default function App() {
                 type="button"
                 aria-label="Zoom out"
                 disabled={overview}
-                onClick={() => {
-                  cancelActivation();
-                  setViewCamera((current) => zoomCamera(current, 1 / 1.2));
-                }}
+                onClick={() => zoomView(1 / 1.2)}
               >
                 −
               </button>
@@ -761,10 +765,7 @@ export default function App() {
                 type="button"
                 aria-label="Zoom in"
                 disabled={overview}
-                onClick={() => {
-                  cancelActivation();
-                  setViewCamera((current) => zoomCamera(current, 1.2));
-                }}
+                onClick={() => zoomView(1.2)}
               >
                 +
               </button>
@@ -779,9 +780,9 @@ export default function App() {
                   : "SPATIAL FOCUS / pan through the centre"}
             </p>
             <p id="map-help">
-              Drag / arrows pan · hold to accelerate · Ctrl+arrows browse ·
-              Shift+arrows follow connections · Space focuses · Enter /
-              double-click switches views · Esc restores map
+              Drag / arrows pan · hold to accelerate · Ctrl+= / Ctrl+- zoom ·
+              Ctrl+arrows browse · Shift+arrows follow connections · Space
+              focuses · Enter / double-click switches views · Esc restores map
             </p>
             {keyboardActive && (
               <p className="keyboard-target-label">
