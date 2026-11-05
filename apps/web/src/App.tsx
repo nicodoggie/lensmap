@@ -1,4 +1,13 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Markdown from "react-markdown";
 import { limitMagnification } from "./clearance";
 import { parseSource } from "./document/parse";
@@ -10,6 +19,8 @@ import {
   projectPoint,
   zoomCamera,
 } from "./lens";
+import NeighbourhoodContinuations from "./NeighbourhoodContinuations";
+import { neighbourhood } from "./neighbourhood";
 import Sidebar from "./Sidebar";
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import sampleSource from "./sample.yaml?raw";
@@ -23,6 +34,15 @@ const sampleGraph = initialDocument.graph;
 
 export default function App() {
   const canvas = useRef<HTMLDivElement>(null);
+  const scene = useRef<HTMLDivElement>(null);
+  const pendingActivation = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const doubleCandidate = useRef<string | null>(null);
+  const cancelActivation = useCallback(() => {
+    if (pendingActivation.current !== null)
+      clearTimeout(pendingActivation.current);
+    pendingActivation.current = null;
+    doubleCandidate.current = null;
+  }, []);
   const drag = useRef<{
     id: number;
     x: number;
@@ -40,9 +60,27 @@ export default function App() {
   const [selected, setSelected] = useState(nodes[0]?.key ?? "");
   const [sidebarWidth, setSidebarWidth] = useState(340);
   const [strength, setStrength] = useState(1.1);
+  const [neighbourhoodStrength, setNeighbourhoodStrength] = useState(1.1);
   const [overview, setOverview] = useState(false);
+  const [inNeighbourhood, setInNeighbourhood] = useState(false);
+  const [neighbourhoodCamera, setNeighbourhoodCamera] = useState({
+    x: 0,
+    y: 0,
+    zoom: 1,
+  });
   const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState("");
+  const setViewCamera = inNeighbourhood ? setNeighbourhoodCamera : setCamera;
+  const shownStrength = inNeighbourhood ? neighbourhoodStrength : strength;
+  const setViewStrength = inNeighbourhood
+    ? setNeighbourhoodStrength
+    : setStrength;
+  const local = useMemo(
+    () => (inNeighbourhood ? neighbourhood(graph, selected, nodeRadius) : null),
+    [graph, inNeighbourhood, selected],
+  );
+
+  useEffect(() => cancelActivation, [cancelActivation]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -61,12 +99,13 @@ export default function App() {
     const element = canvas.current;
     if (!element) return;
     const wheel = (event: WheelEvent) => {
+      cancelActivation();
       if (overview) return;
       event.preventDefault();
       const pixels =
         event.deltaY *
         (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? size.height : 1);
-      setCamera((current) =>
+      setViewCamera((current) =>
         zoomCamera(
           current,
           Math.exp(-Math.max(-400, Math.min(400, pixels)) * 0.0015),
@@ -75,22 +114,26 @@ export default function App() {
     };
     element.addEventListener("wheel", wheel, { passive: false });
     return () => element.removeEventListener("wheel", wheel);
-  }, [overview, size.height]);
+  }, [overview, size.height, setViewCamera, cancelActivation]);
 
-  const shownCamera = overview ? fitCamera(nodes, size, nodeRadius) : camera;
+  const shownCamera = inNeighbourhood
+    ? neighbourhoodCamera
+    : overview
+      ? fitCamera(nodes, size, nodeRadius)
+      : camera;
   // Limit magnification before shared scene zoom, never changing circle centres.
-  const projected = nodes.map((node) => ({
+  const projected = (local?.nodes ?? nodes).map((node) => ({
     ...projectPoint(
       node,
       { ...shownCamera, zoom: 1 },
       size,
-      overview ? 0 : strength,
+      overview ? 0 : shownStrength,
     ),
     node,
   }));
   const circles = overview
     ? projected
-    : limitMagnification(projected, nodeRadius, strength);
+    : limitMagnification(projected, nodeRadius, shownStrength);
   const positions = new Map(circles.map((point) => [point.node.key, point]));
   const active = nodes.find((node) => node.key === selected) ?? nodes[0];
   const incident = edges.filter(
@@ -102,11 +145,12 @@ export default function App() {
   );
   // Paint selected routes last: unrelated dark edge halos must not cover them.
   const drawnEdges = [
-    ...edges.filter((edge) => !connectedEdges.has(edge.key)),
+    ...(local?.edges ?? edges).filter((edge) => !connectedEdges.has(edge.key)),
     ...incident,
   ];
 
   function focusNode(key: string) {
+    cancelActivation();
     const node = nodes.find((candidate) => candidate.key === key);
     if (!node) {
       setMessage(`The selected node is no longer in the graph.`);
@@ -114,8 +158,75 @@ export default function App() {
     }
     setSelected(key);
     setOverview(false);
-    setCamera((current) => ({ ...current, x: node.x, y: node.y }));
+    if (inNeighbourhood) {
+      setNeighbourhoodCamera((current) => ({ ...current, x: 0, y: 0 }));
+      revealScene();
+    } else setCamera((current) => ({ ...current, x: node.x, y: node.y }));
     setMessage("");
+  }
+
+  function revealScene() {
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      scene.current?.animate([{ opacity: 0.4 }, { opacity: 1 }], {
+        duration: 160,
+        easing: "ease-out",
+      });
+  }
+
+  function toggleNeighbourhood(key: string) {
+    const node = nodes.find((candidate) => candidate.key === key);
+    if (!node) return;
+    cancelActivation();
+    stopDrag();
+    setSelected(key);
+    setOverview(false);
+    setInNeighbourhood(!inNeighbourhood);
+    if (inNeighbourhood)
+      setCamera((current) => ({ ...current, x: node.x, y: node.y }));
+    else {
+      setNeighbourhoodCamera({ x: 0, y: 0, zoom: 1 });
+      setNeighbourhoodStrength(strength);
+    }
+    setMessage("");
+    revealScene();
+  }
+
+  function showMap(nextOverview: boolean) {
+    cancelActivation();
+    stopDrag();
+    if (inNeighbourhood && active) {
+      setCamera((current) => ({ ...current, x: active.x, y: active.y }));
+      revealScene();
+    }
+    setInNeighbourhood(false);
+    setOverview(nextOverview);
+  }
+
+  const escapeToMap = useEffectEvent((event: KeyboardEvent) => {
+    const editing =
+      event.target instanceof Element &&
+      event.target.closest("textarea,input,[contenteditable=true]");
+    if (event.key === "Escape" && inNeighbourhood && !editing) {
+      event.preventDefault();
+      showMap(false);
+    }
+  });
+
+  useEffect(() => {
+    document.addEventListener("keydown", escapeToMap);
+    return () => document.removeEventListener("keydown", escapeToMap);
+  }, []);
+
+  function activateNode(event: MouseEvent<HTMLButtonElement>, key: string) {
+    if (event.detail === 0) {
+      focusNode(key);
+      return;
+    }
+    if (event.detail !== 1) return;
+    cancelActivation();
+    doubleCandidate.current = key;
+    // Hold geometry still while the browser resolves a possible double-click.
+    pendingActivation.current = setTimeout(() => focusNode(key), 350);
   }
 
   function focusFragment(fragment: string) {
@@ -135,6 +246,9 @@ export default function App() {
   }
 
   function applyGraph(next: GraphData) {
+    cancelActivation();
+    stopDrag();
+    setInNeighbourhood(false);
     const nextActive =
       (active?.id
         ? next.nodes.find((node) => node.id === active.id)
@@ -176,6 +290,11 @@ export default function App() {
         className="workspace"
         aria-label="Lens exploration"
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+        onPointerDownCapture={(event) => {
+          if (!(event.target as Element).closest("[data-node]"))
+            cancelActivation();
+        }}
+        onKeyDown={cancelActivation}
       >
         <div className="map-column">
           <div className="toolbar">
@@ -183,15 +302,15 @@ export default function App() {
               <legend className="sr-only">Map view</legend>
               <button
                 type="button"
-                aria-pressed={!overview}
-                onClick={() => setOverview(false)}
+                aria-pressed={!overview && !inNeighbourhood}
+                onClick={() => showMap(false)}
               >
                 Lens
               </button>
               <button
                 type="button"
                 aria-pressed={overview}
-                onClick={() => setOverview(true)}
+                onClick={() => showMap(true)}
               >
                 Overview
               </button>
@@ -204,16 +323,35 @@ export default function App() {
                 min="0"
                 max="1.4"
                 step="0.05"
-                value={strength}
+                value={shownStrength}
                 disabled={overview}
-                onChange={(event) => setStrength(Number(event.target.value))}
+                onChange={(event) => {
+                  cancelActivation();
+                  setViewStrength(Number(event.target.value));
+                }}
               />
-              <output>{strength.toFixed(2)}</output>
+              <output>{shownStrength.toFixed(2)}</output>
             </label>
+            <button
+              type="button"
+              className="neighbourhood-action"
+              disabled={!active}
+              onClick={() => active && toggleNeighbourhood(active.key)}
+            >
+              {inNeighbourhood ? "Return to map" : "Explore neighbourhood"}
+            </button>
+            {inNeighbourhood && active && (
+              <span className="neighbourhood-label">
+                Neighbourhood · {label(active)}
+              </span>
+            )}
             <button
               type="button"
               className="quiet"
               onClick={() => {
+                cancelActivation();
+                stopDrag();
+                setInNeighbourhood(false);
                 setCamera({
                   ...initialCamera,
                   x: nodes[0]?.x ?? 0,
@@ -230,7 +368,10 @@ export default function App() {
           </div>
           <div
             ref={canvas}
-            className={`map ${dragging ? "dragging" : ""} ${overview ? "overview" : ""}`}
+            className={`map ${dragging ? "dragging" : ""} ${overview ? "overview" : ""} ${inNeighbourhood ? "neighbourhood" : ""}`}
+            data-view={
+              inNeighbourhood ? "neighbourhood" : overview ? "overview" : "lens"
+            }
             role="application"
             aria-label="Spatial map"
             aria-describedby="map-help"
@@ -244,6 +385,8 @@ export default function App() {
               const button = (
                 event.target as Element
               ).closest<HTMLButtonElement>("button");
+              if (button && !button.hasAttribute("data-node"))
+                cancelActivation();
               if (overview || (button && !button.hasAttribute("data-node")))
                 return;
               if (!button) event.currentTarget.focus({ preventScroll: true });
@@ -273,6 +416,7 @@ export default function App() {
               )
                 return;
               if (!previous.active) {
+                cancelActivation();
                 setDragging(true);
                 suppressPointerClick.current = true;
                 event.currentTarget.focus({ preventScroll: true });
@@ -281,7 +425,7 @@ export default function App() {
                 x: event.clientX - previous.x,
                 y: event.clientY - previous.y,
               };
-              setCamera((current) => panCamera(current, delta));
+              setViewCamera((current) => panCamera(current, delta));
               drag.current = {
                 ...previous,
                 x: event.clientX,
@@ -293,6 +437,7 @@ export default function App() {
               if (drag.current?.id === event.pointerId) stopDrag();
             }}
             onPointerCancel={(event) => {
+              cancelActivation();
               if (drag.current?.id === event.pointerId) stopDrag();
             }}
             onLostPointerCapture={(event) => {
@@ -318,7 +463,8 @@ export default function App() {
               const delta = deltas[event.key];
               if (delta) {
                 event.preventDefault();
-                setCamera((current) => panCamera(current, delta));
+                cancelActivation();
+                setViewCamera((current) => panCamera(current, delta));
               }
             }}
           >
@@ -330,6 +476,7 @@ export default function App() {
               </div>
             )}
             <div
+              ref={scene}
               className="graph-scene"
               style={{ transform: `scale(${shownCamera.zoom})` }}
             >
@@ -360,6 +507,15 @@ export default function App() {
                     </marker>
                   ))}
                 </defs>
+                {local && (
+                  <NeighbourhoodContinuations
+                    continuations={local.continuations}
+                    positions={positions}
+                    centreKey={selected}
+                    nodes={nodes}
+                    nodeRadius={nodeRadius}
+                  />
+                )}
                 {drawnEdges.map((edge) => {
                   const from = positions.get(edge.from);
                   const to = positions.get(edge.to);
@@ -375,7 +531,17 @@ export default function App() {
                     x: to.x - (dx / distance) * (nodeRadius * to.scale + 7),
                     y: to.y - (dy / distance) * (nodeRadius * to.scale + 7),
                   };
-                  const bend = edge.kind === "cross" ? 42 : 0;
+                  let bend = edge.kind === "cross" ? 42 : 0;
+                  const centre = positions.get(selected);
+                  if (local && !connectedEdges.has(edge.key) && centre) {
+                    // Bow away from the centre on either side of the chord;
+                    // a fixed sign can make an adjacent route look incident.
+                    const side =
+                      (((start.x + end.x) / 2 - centre.x) * -dy +
+                        ((start.y + end.y) / 2 - centre.y) * dx) /
+                      distance;
+                    bend = side < 0 ? -190 : 190;
+                  }
                   const radius = nodeRadius * from.scale;
                   const path =
                     edge.from === edge.to
@@ -386,11 +552,12 @@ export default function App() {
                       <path d={path} className="edge-halo" />
                       <path
                         data-edge={`${edge.from}-${edge.to}`}
+                        data-edge-key={edge.key}
                         data-kind={edge.kind}
                         d={path}
                         stroke={colours[to.node.branch]}
                         style={{ color: colours[to.node.branch] }}
-                        className={`edge ${edge.kind} ${connectedEdges.has(edge.key) ? "connected" : ""}`}
+                        className={`edge ${edge.kind} ${connectedEdges.has(edge.key) ? "connected" : local ? "context" : ""}`}
                         markerEnd={
                           edge.kind === "cross"
                             ? `url(#arrow-${to.node.branch})`
@@ -401,7 +568,7 @@ export default function App() {
                   );
                 })}
               </svg>
-              {nodes.map((node) => {
+              {(local?.nodes ?? nodes).map((node) => {
                 const point = positions.get(node.key);
                 if (!point) return null;
                 return (
@@ -423,7 +590,19 @@ export default function App() {
                         "--branch-colour": colours[node.branch],
                       } as CSSProperties
                     }
-                    onClick={() => focusNode(node.key)}
+                    onClick={(event) => activateNode(event, node.key)}
+                    onDoubleClick={() => {
+                      const eligible = doubleCandidate.current === node.key;
+                      cancelActivation();
+                      if (eligible) toggleNeighbourhood(node.key);
+                      else focusNode(node.key);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && event.shiftKey) {
+                        event.preventDefault();
+                        toggleNeighbourhood(node.key);
+                      }
+                    }}
                   >
                     <span>
                       {node.unresolved ? (
@@ -452,9 +631,10 @@ export default function App() {
                 type="button"
                 aria-label="Zoom out"
                 disabled={overview}
-                onClick={() =>
-                  setCamera((current) => zoomCamera(current, 1 / 1.2))
-                }
+                onClick={() => {
+                  cancelActivation();
+                  setViewCamera((current) => zoomCamera(current, 1 / 1.2));
+                }}
               >
                 −
               </button>
@@ -465,7 +645,10 @@ export default function App() {
                 type="button"
                 aria-label="Zoom in"
                 disabled={overview}
-                onClick={() => setCamera((current) => zoomCamera(current, 1.2))}
+                onClick={() => {
+                  cancelActivation();
+                  setViewCamera((current) => zoomCamera(current, 1.2));
+                }}
               >
                 +
               </button>
@@ -473,13 +656,18 @@ export default function App() {
           </div>
           <footer className="map-footer">
             <p className="map-caption">
-              {overview
-                ? "UNDISTORTED / select a thought to return"
-                : "SPATIAL FOCUS / pan through the centre"}
+              {inNeighbourhood
+                ? `NEIGHBOURHOOD / ${active ? label(active) : ""}`
+                : overview
+                  ? "UNDISTORTED / select a thought to return"
+                  : "SPATIAL FOCUS / pan through the centre"}
             </p>
             <p id="map-help">
               Drag map or thoughts · scroll to zoom · Tab to a thought, Enter to
               focus · arrow keys pan the focused map
+              {" · Double-click or Shift+Enter to dive / return"}
+              {inNeighbourhood &&
+                " · Esc returns to map; fading lines continue beyond this view"}
             </p>
             <div className="legend">
               <span>━ branch</span>
@@ -498,7 +686,13 @@ export default function App() {
         />
       </section>
       <p className="sr-only" role="status">
-        Selected thought: {active ? label(active) : "none"}. {message}
+        Selected thought: {active ? label(active) : "none"}.{" "}
+        {inNeighbourhood
+          ? "Neighbourhood view."
+          : overview
+            ? "Overview."
+            : "Lens map."}{" "}
+        {message}
       </p>
       <footer className="page-footer">
         <span>

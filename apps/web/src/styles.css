@@ -206,6 +206,16 @@ h1 {
   stroke-dasharray: 7 6;
   stroke-width: 2;
 }
+.edge.context {
+  opacity: 0.45;
+}
+.neighbourhood-action {
+  font-size: 12px;
+}
+.neighbourhood-label {
+  color: #a9d7d2;
+  font-size: 11px;
+}
 .edge.connected {
   stroke-width: 3.5;
   opacity: 1;
