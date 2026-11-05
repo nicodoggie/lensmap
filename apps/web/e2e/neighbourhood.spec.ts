@@ -13,7 +13,7 @@ test("radial neighbourhood preserves the map, boundary edge styles and uniform z
     page.getByRole("button", { name: "Explore neighbourhood", exact: true }),
   ).toBeVisible();
   await harbor.focus();
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("Space");
   await expect(harbor).toHaveAttribute("aria-pressed", "true");
   const originalPositions = await page
     .locator("[data-node]")
@@ -273,7 +273,7 @@ test("new control intent cancels queued clicks; dragging, drafts, prose navigati
   await expect(map).toHaveAttribute("data-view", "neighbourhood");
   await expect(ferry).toHaveAttribute("aria-pressed", "true");
   await ferry.focus();
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("Space");
   expect(
     await page
       .locator(".graph-scene")
@@ -293,6 +293,8 @@ test("new control intent cancels queued clicks; dragging, drafts, prose navigati
   await expect(map).toHaveAttribute("data-view", "neighbourhood");
   await expect(source).toHaveValue(draft);
   await expect(page.locator(".page-footer")).toHaveText(total ?? "");
+  // Viewer shortcuts no longer leak into sidebar links or editing controls.
+  await map.focus();
   await page.keyboard.press("Escape");
   await expect(map).toHaveAttribute("data-view", "lens");
 });

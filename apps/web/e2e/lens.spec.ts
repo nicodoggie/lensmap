@@ -100,7 +100,7 @@ test("spatial focus, prose navigation and view controls work in the rendered app
   );
 
   await ferry.focus();
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("Space");
   await expect(ferry).toBeFocused();
   await expect(ferry).toHaveAttribute("aria-pressed", "true");
   const beforePan = await ferry.getAttribute("style");
@@ -552,7 +552,7 @@ test("selection glow follows only immediate explicit connections", async ({
   });
 
   await page.getByRole("button", { name: "Child", exact: true }).focus();
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("Space");
   const child = page.getByRole("button", { name: "Child", exact: true });
   await expect(child).toBeFocused();
   expect(

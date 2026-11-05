@@ -3,7 +3,6 @@ import {
   type MouseEvent,
   useCallback,
   useEffect,
-  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -20,10 +19,17 @@ import {
   zoomCamera,
 } from "./lens";
 import NeighbourhoodContinuations from "./NeighbourhoodContinuations";
+import {
+  centralTarget,
+  connectionTarget,
+  type Direction,
+  spatialTarget,
+} from "./navigation";
 import { neighbourhood } from "./neighbourhood";
 import Sidebar from "./Sidebar";
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import sampleSource from "./sample.yaml?raw";
+import { useMapKeyboard } from "./useMapKeyboard";
 
 const initialCamera: Camera = { x: 0, y: 0, zoom: 0.85 };
 const nodeRadius = 43;
@@ -70,6 +76,25 @@ export default function App() {
   });
   const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState("");
+  const [keyboardTarget, setKeyboardTarget] = useState<string>();
+  const [keyboardActive, setKeyboardActive] = useState(false);
+  const [maximumPanSpeed, setMaximumPanSpeed] = useState(900);
+  const returnOverview = useRef(false);
+  const keyboard = useMapKeyboard(canvas, {
+    canPan: !overview,
+    maximum: maximumPanSpeed,
+    onIntent: cancelActivation,
+    onPan: panView,
+    onSpatial: moveTarget,
+    onTraverse: traverseTarget,
+    onAccept: () => {
+      if (target) focusNode(target.key);
+    },
+    onToggle: () => {
+      if (target) toggleNeighbourhood(target.key);
+    },
+    onEscape: restoreMap,
+  });
   const setViewCamera = inNeighbourhood ? setNeighbourhoodCamera : setCamera;
   const shownStrength = inNeighbourhood ? neighbourhoodStrength : strength;
   const setViewStrength = inNeighbourhood
@@ -100,6 +125,7 @@ export default function App() {
     if (!element) return;
     const wheel = (event: WheelEvent) => {
       cancelActivation();
+      keyboard.stop();
       if (overview) return;
       event.preventDefault();
       const pixels =
@@ -114,7 +140,7 @@ export default function App() {
     };
     element.addEventListener("wheel", wheel, { passive: false });
     return () => element.removeEventListener("wheel", wheel);
-  }, [overview, size.height, setViewCamera, cancelActivation]);
+  }, [overview, size.height, setViewCamera, cancelActivation, keyboard.stop]);
 
   const shownCamera = inNeighbourhood
     ? neighbourhoodCamera
@@ -135,6 +161,21 @@ export default function App() {
     ? projected
     : limitMagnification(projected, nodeRadius, shownStrength);
   const positions = new Map(circles.map((point) => [point.node.key, point]));
+  const navigationPoints = circles.map((point) => ({
+    key: point.node.key,
+    x: (point.x - size.width / 2) * shownCamera.zoom,
+    y: (point.y - size.height / 2) * shownCamera.zoom,
+  }));
+  const visiblePoints = navigationPoints.filter(
+    (point) =>
+      Math.abs(point.x) <= size.width / 2 &&
+      Math.abs(point.y) <= size.height / 2,
+  );
+  const target =
+    keyboardTarget === undefined
+      ? centralTarget(visiblePoints)
+      : visiblePoints.find((point) => point.key === keyboardTarget);
+  const targetNode = nodes.find((node) => node.key === target?.key);
   const active = nodes.find((node) => node.key === selected) ?? nodes[0];
   const incident = edges.filter(
     (edge) => edge.from === active?.key || edge.to === active?.key,
@@ -149,19 +190,79 @@ export default function App() {
     ...incident,
   ];
 
+  function panView(delta: { x: number; y: number }) {
+    setKeyboardTarget(undefined);
+    setViewCamera((current) => panCamera(current, delta));
+  }
+
+  function moveTarget(direction: Direction) {
+    const next = spatialTarget(visiblePoints, target?.key, direction);
+    if (next) setKeyboardTarget(next.key);
+  }
+
+  function traverseTarget(direction: Direction) {
+    if (!target) return;
+    const next = connectionTarget(
+      graph,
+      target.key,
+      direction,
+      navigationPoints,
+    );
+    if (next) focusNode(next.key);
+  }
+
+  function restoreMap() {
+    if (!inNeighbourhood) return;
+    cancelActivation();
+    keyboard.stop();
+    stopDrag();
+    setInNeighbourhood(false);
+    setOverview(returnOverview.current);
+    setKeyboardTarget(undefined);
+    revealScene();
+  }
+
+  function retainViewerFocus(key: string, nextNeighbourhood: boolean) {
+    if (!nextNeighbourhood) return;
+    const viewer = canvas.current;
+    const focused = document.activeElement;
+    if (!viewer?.contains(focused)) return;
+    const focusedKey =
+      focused instanceof Element
+        ? focused.closest<HTMLElement>("[data-node]")?.dataset.node
+        : undefined;
+    // Move focus before React removes its button, but leave surviving buttons
+    // and controls outside the viewer alone. Visibility is one-hop adjacency.
+    if (
+      focusedKey &&
+      focusedKey !== key &&
+      !edges.some(
+        (edge) =>
+          (edge.from === key && edge.to === focusedKey) ||
+          (edge.to === key && edge.from === focusedKey),
+      )
+    )
+      viewer.focus({ preventScroll: true });
+  }
+
   function focusNode(key: string) {
     cancelActivation();
+    keyboard.stop();
     const node = nodes.find((candidate) => candidate.key === key);
     if (!node) {
       setMessage(`The selected node is no longer in the graph.`);
       return;
     }
+    retainViewerFocus(key, inNeighbourhood);
     setSelected(key);
+    setKeyboardTarget(key);
     setOverview(false);
     if (inNeighbourhood) {
       setNeighbourhoodCamera((current) => ({ ...current, x: 0, y: 0 }));
       revealScene();
-    } else setCamera((current) => ({ ...current, x: node.x, y: node.y }));
+    } else {
+      setCamera((current) => ({ ...current, x: node.x, y: node.y }));
+    }
     setMessage("");
   }
 
@@ -177,8 +278,12 @@ export default function App() {
     const node = nodes.find((candidate) => candidate.key === key);
     if (!node) return;
     cancelActivation();
+    keyboard.stop();
     stopDrag();
+    retainViewerFocus(key, !inNeighbourhood);
     setSelected(key);
+    setKeyboardTarget(key);
+    if (!inNeighbourhood) returnOverview.current = overview;
     setOverview(false);
     setInNeighbourhood(!inNeighbourhood);
     if (inNeighbourhood)
@@ -193,6 +298,7 @@ export default function App() {
 
   function showMap(nextOverview: boolean) {
     cancelActivation();
+    keyboard.stop();
     stopDrag();
     if (inNeighbourhood && active) {
       setCamera((current) => ({ ...current, x: active.x, y: active.y }));
@@ -200,22 +306,8 @@ export default function App() {
     }
     setInNeighbourhood(false);
     setOverview(nextOverview);
+    setKeyboardTarget(undefined);
   }
-
-  const escapeToMap = useEffectEvent((event: KeyboardEvent) => {
-    const editing =
-      event.target instanceof Element &&
-      event.target.closest("textarea,input,[contenteditable=true]");
-    if (event.key === "Escape" && inNeighbourhood && !editing) {
-      event.preventDefault();
-      showMap(false);
-    }
-  });
-
-  useEffect(() => {
-    document.addEventListener("keydown", escapeToMap);
-    return () => document.removeEventListener("keydown", escapeToMap);
-  }, []);
 
   function activateNode(event: MouseEvent<HTMLButtonElement>, key: string) {
     if (event.detail === 0) {
@@ -247,6 +339,7 @@ export default function App() {
 
   function applyGraph(next: GraphData) {
     cancelActivation();
+    keyboard.stop();
     stopDrag();
     setInNeighbourhood(false);
     const nextActive =
@@ -255,6 +348,7 @@ export default function App() {
         : undefined) ?? next.nodes[0];
     setGraph(next);
     setSelected(nextActive?.key ?? "");
+    setKeyboardTarget(undefined);
     setCamera({
       ...initialCamera,
       x: nextActive?.x ?? 0,
@@ -291,6 +385,7 @@ export default function App() {
         aria-label="Lens exploration"
         style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
         onPointerDownCapture={(event) => {
+          keyboard.stop();
           if (!(event.target as Element).closest("[data-node]"))
             cancelActivation();
         }}
@@ -332,6 +427,22 @@ export default function App() {
               />
               <output>{shownStrength.toFixed(2)}</output>
             </label>
+            <label className="strength">
+              Pan max
+              <input
+                aria-label="Maximum keyboard pan speed"
+                type="range"
+                min="120"
+                max="1800"
+                step="60"
+                value={maximumPanSpeed}
+                onChange={(event) => {
+                  keyboard.stop();
+                  setMaximumPanSpeed(Number(event.target.value));
+                }}
+              />
+              <output>{maximumPanSpeed} px/s</output>
+            </label>
             <button
               type="button"
               className="neighbourhood-action"
@@ -350,6 +461,7 @@ export default function App() {
               className="quiet"
               onClick={() => {
                 cancelActivation();
+                keyboard.stop();
                 stopDrag();
                 setInNeighbourhood(false);
                 setCamera({
@@ -358,6 +470,7 @@ export default function App() {
                   y: nodes[0]?.y ?? 0,
                 });
                 setSelected(nodes[0]?.key ?? "");
+                setKeyboardTarget(undefined);
                 setStrength(1.1);
                 setOverview(false);
                 setMessage("");
@@ -375,8 +488,26 @@ export default function App() {
             role="application"
             aria-label="Spatial map"
             aria-describedby="map-help"
+            aria-activedescendant={
+              keyboardActive && target ? `thought-${target.key}` : undefined
+            }
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Arrow-key panning needs a focus target separate from node buttons.
             tabIndex={0}
+            onFocusCapture={(event) => {
+              const node = (event.target as Element).closest<HTMLElement>(
+                "[data-node]",
+              );
+              setKeyboardActive(event.target === event.currentTarget || !!node);
+              if (node) setKeyboardTarget(node.dataset.node);
+            }}
+            onBlurCapture={(event) => {
+              if (
+                !event.currentTarget.contains(
+                  event.relatedTarget as Node | null,
+                )
+              )
+                setKeyboardActive(false);
+            }}
             onPointerDown={(event) => {
               if (event.button !== 0 || !event.isPrimary) return;
               // A cancelled gesture may not produce a click to consume. A new
@@ -425,7 +556,7 @@ export default function App() {
                 x: event.clientX - previous.x,
                 y: event.clientY - previous.y,
               };
-              setViewCamera((current) => panCamera(current, delta));
+              panView(delta);
               drag.current = {
                 ...previous,
                 x: event.clientX,
@@ -451,21 +582,6 @@ export default function App() {
               suppressPointerClick.current = false;
               event.preventDefault();
               event.stopPropagation();
-            }}
-            onKeyDown={(event) => {
-              if (event.target !== event.currentTarget || overview) return;
-              const deltas: Record<string, { x: number; y: number }> = {
-                ArrowLeft: { x: 50, y: 0 },
-                ArrowRight: { x: -50, y: 0 },
-                ArrowUp: { x: 0, y: 50 },
-                ArrowDown: { x: 0, y: -50 },
-              };
-              const delta = deltas[event.key];
-              if (delta) {
-                event.preventDefault();
-                cancelActivation();
-                setViewCamera((current) => panCamera(current, delta));
-              }
             }}
           >
             {!overview && <div className="focus-ring" aria-hidden="true" />}
@@ -575,8 +691,14 @@ export default function App() {
                   <button
                     type="button"
                     key={node.key}
+                    id={`thought-${node.key}`}
                     className={`node ${selected === node.key ? "selected" : ""} ${connectedNodes.has(node.key) ? "connected" : ""} ${node.unresolved ? "unresolved" : ""}`}
                     data-node={node.key}
+                    data-keyboard-target={
+                      keyboardActive && target?.key === node.key
+                        ? "true"
+                        : undefined
+                    }
                     data-scale={point.scale * shownCamera.zoom}
                     aria-label={label(node)}
                     aria-pressed={selected === node.key}
@@ -596,12 +718,6 @@ export default function App() {
                       cancelActivation();
                       if (eligible) toggleNeighbourhood(node.key);
                       else focusNode(node.key);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && event.shiftKey) {
-                        event.preventDefault();
-                        toggleNeighbourhood(node.key);
-                      }
                     }}
                   >
                     <span>
@@ -663,12 +779,16 @@ export default function App() {
                   : "SPATIAL FOCUS / pan through the centre"}
             </p>
             <p id="map-help">
-              Drag map or thoughts · scroll to zoom · Tab to a thought, Enter to
-              focus · arrow keys pan the focused map
-              {" · Double-click or Shift+Enter to dive / return"}
-              {inNeighbourhood &&
-                " · Esc returns to map; fading lines continue beyond this view"}
+              Drag / arrows pan · hold to accelerate · Ctrl+arrows browse ·
+              Shift+arrows follow connections · Space focuses · Enter /
+              double-click switches views · Esc restores map
             </p>
+            {keyboardActive && (
+              <p className="keyboard-target-label">
+                Target:{" "}
+                {targetNode ? label(targetNode) : "none in the central region"}
+              </p>
+            )}
             <div className="legend">
               <span>━ branch</span>
               <span>┄➤ cross-link / cycle</span>
@@ -693,6 +813,8 @@ export default function App() {
             ? "Overview."
             : "Lens map."}{" "}
         {message}
+        {keyboardActive &&
+          ` Keyboard target: ${targetNode ? label(targetNode) : "none"}.`}
       </p>
       <footer className="page-footer">
         <span>
