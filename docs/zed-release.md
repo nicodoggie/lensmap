@@ -18,9 +18,11 @@ The language-server/settings key is still **lensmap**. Uninstall the earlier
 `lsp.lensmap` settings. See the [extension README](../editors/zed/README.md) and
 [Zed/browser setup](zed-browser.md).
 
-**Preparation is not publication.** The npm packages and Zed extension have not
-been published by this work. Until the pinned npm runtime exists, keep the
-checkout-local binary override. npm trust setup is deliberately deferred.
+**The extension has not been submitted to the Zed registry.** Its pinned npm
+runtime is now **0.1.1**, published and qualified through a fresh registry-only
+production install/browser check. The extension version remains **0.1.0**;
+runtime and extension versions are independent. The checkout-local binary
+override remains available for development.
 
 ## Build and verify the extension bundle
 
@@ -68,10 +70,10 @@ an inspected build artifact, not an alternate extension-registry installer.
 - **Manual dispatch:** Rust checks, script lint/typechecking, component build,
   safe extraction/rebuild and checksum verification, then a retained
   `zed-extension` workflow artifact. It creates no release and does not require
-  the still-unpublished npm runtime.
+  an npm runtime download.
 - **A pushed `zed-v<extension-version>` tag:** the same checks, plus exact npm
   version availability, a clean production installation of the published server
-  and the existing three browser bridge tests against that installed executable.
+  and the existing four browser bridge tests against that installed executable.
   Only after those pass does a separate job create a **draft GitHub prerelease**
   with the verified bundle/checksums and read back its release metadata.
 
@@ -101,7 +103,8 @@ preview HTML served successfully. The owned service/cgroup and LSP endpoint
 closed afterward; the existing user editor/settings were not changed.
 
 This proves the packaged component and exact cached-runtime path, **not a fresh
-public npm download through Zed**. That remains pending first npm publication.
+public npm download through Zed**. Public npm installation/browser checks have
+passed for runtime 0.1.1, but do not replace that native host qualification.
 The tagged workflow adds registry-only install/browser proof, but does not
 replace final native Zed acceptance of the precise submission revision. No
 cross-platform host/browser-opening qualification is implied.
@@ -135,4 +138,4 @@ Sources: [prerequisites](https://zed.dev/docs/extensions/publishing/prerequisite
 [publishing guide](https://zed.dev/docs/extensions/publishing/publishing-guide),
 [capabilities](https://zed.dev/docs/extensions/capabilities), and the registry's
 [AI policy](https://github.com/zed-industries/extensions/blob/main/AI_POLICY.md).
-See [npm release setup](npm-release.md) for the deliberately deferred trust step.
+See [npm releases](npm-release.md) for runtime publication and trusted-publisher setup.

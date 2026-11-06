@@ -13,14 +13,16 @@ revision checks and real buffer readback. Editor application is **not atomic**.
 The [integration direction](docs/integration-direction.md) preserves the earlier
 design checkpoint and deferred goals.
 
-The `@lensmap/document` and `@lensmap/language-server` npm packages now have a
-qualified local pack/install path and a prepared, approval-gated release
-workflow. **They have not been published by this preparation.** See
-[package verification and release setup](docs/npm-release.md). The Zed extension
+The `@lensmap/document` and `@lensmap/language-server` npm packages are published
+at **0.1.1**, with both `latest` and `next` pointing to that version. CI-verified
+tarballs match the registry bytes, and a fresh registry install passed the
+consumer/browser checks. See [package verification and releases](docs/npm-release.md).
+The Zed extension
 now has a pinned npm-runtime launcher, a verified dev-install source/component
-bundle and a prepared [Zed release flow](docs/zed-release.md). Fresh public npm
-installation awaits first publication; Zed registry submission stays separate
-and human-led. The checkout-local dev-extension override still works without a
+bundle and a prepared [Zed release flow](docs/zed-release.md), now pinned to
+runtime **0.1.1**. Fresh native Zed managed-download acceptance and Zed registry
+submission stay separate; registry submission is human-led. The checkout-local
+dev-extension override still works without a
 GitHub release or published npm package.
 
 ## Run locally

@@ -2,13 +2,24 @@
 
 ## Current state
 
-`@lensmap/document` and `@lensmap/language-server` are published at **0.1.0**,
+`@lensmap/document` and `@lensmap/language-server` are published at **0.1.1**,
 with both **next** and **latest** pointing to that version. They remain
 experimental packages. Downloaded registry tarballs matched the retained
-CI-verified bytes. A fresh public-registry production installation passed export,
-declaration, CLI, generated Zed-settings and all three browser-bridge checks.
-The maintainer reports configuring trusted publishers for both packages;
-successful OIDC publication and OIDC dist-tag promotion remain unexercised.
+CI-verified bytes, including the qualified TypeScript declarations.
+OIDC publication and OIDC dist-tag promotion are now exercised for both packages.
+The immutable source tag is `npm-v0.1.1` at
+`47b31d1c25c5ac54fef2ecac593158cf73b422d5`.
+
+The [tagged run](https://github.com/nicodoggie/lensmap/actions/runs/42238420160)
+verified both artifacts and published the engine, but its immediate registry
+readback hit npm's processing delay and stopped before attempting the server.
+[Server-only recovery](https://github.com/nicodoggie/lensmap/actions/runs/42240606663)
+reused those verified artifacts without rebuilding or republishing the engine.
+[Latest promotion](https://github.com/nicodoggie/lensmap/actions/runs/42241063129)
+then succeeded. Registry SHA512 integrity and downloaded bytes matched the
+original CI tarballs for both packages. A registry-only production install passed
+exports, exact engine dependency, CLI, generated settings and all four browser
+bridge tests. This is not fresh native Zed managed-download acceptance.
 
 - **document** contains compiled ESM and TypeScript declarations for the root
   and `/v1` exports. It owns analysis/source semantics, not a renderer.
@@ -34,7 +45,7 @@ pnpm test:packages
 packages only and lifecycle scripts disabled, then consumes the exports and
 executable there. A consumer TypeScript probe checks the installed declarations
 using the checkout's test compiler/Node types, not dev dependencies added to the
-production install. The three existing bridge browser tests run against that
+production install. The four existing bridge browser tests run against that
 installed server without `--assets` or a checkout preview server. They exercise
 live edits, last-valid retention, source reveal through a synthetic host,
 confirmed content-edit readback, attachment replacement and shutdown.
