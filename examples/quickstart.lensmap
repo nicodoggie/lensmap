@@ -1,0 +1,25 @@
+# Experimental v1: ordinary YAML with Markdown content.
+version: v1
+nodes:
+  - id: first
+    full_text: |
+      # A starting thought
+
+      This is all **Markdown**. A [prose reference](#shared) navigates without drawing an edge.
+    connections:
+      # Strings are shorthand thoughts; ordinary children need no authored ID.
+      - A simple Markdown child
+      # A nested array introduces an unresolved middle thought, not a flat list.
+      - - A possible consequence
+        - Another consequence
+      # An explicit unresolved thought can also retain its connections.
+      - summary: null
+        connections:
+          - An unnamed thought can still have implications
+      # Explicit references draw connections; forward references are allowed.
+      - node_id: shared
+  - id: shared
+    summary: "**A shared idea**"
+    connections:
+      # This closes a cycle back to the starting thought.
+      - node_id: first

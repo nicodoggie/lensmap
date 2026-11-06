@@ -32,7 +32,7 @@ Re-run this command after moving the checkout or changing its Node installation.
 2. Merge the printed settings into the intended workspace's `.zed/settings.json`.
    Preserve unrelated settings and existing language servers. `.lensmap` files
    are associated with YAML; the Lensmap server ignores ordinary YAML documents.
-3. Open a `.lensmap` file, for example a copy of `apps/web/src/sample.yaml`.
+3. Open `examples/quickstart.lensmap` or the larger `examples/night-ferry.lensmap`.
    Use Zed's language-server restart action if it was open before configuration.
 4. At a source thought, open code actions and choose **Lensmap: Open preview**.
    On the qualified Linux host this launches the browser using `xdg-open`.
