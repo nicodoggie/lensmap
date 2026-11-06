@@ -1,4 +1,4 @@
-import type { GraphData } from "./graph";
+import type { GraphData, GraphEdge, GraphNode } from "./graph";
 import type { Point } from "./lens";
 
 export interface NavigationPoint extends Point {
@@ -58,15 +58,28 @@ export function spatialTarget(
     .sort((a, b) => a.score - b.score || byKey(a.point, b.point))[0]?.point;
 }
 
-/** Bidirectional adjacency determines eligibility, never prose or authored nesting. */
-export function connectionTarget(
+export interface ConnectionCandidate {
+  node: GraphNode;
+  routes: { edge: GraphEdge; direction: "incoming" | "outgoing" }[];
+}
+
+export interface ConnectionChoice {
+  origin: string;
+  direction: Direction;
+  positions: readonly NavigationPoint[];
+  candidates: ConnectionCandidate[];
+  index: number;
+}
+
+/** Bidirectional adjacency determines eligibility; retain every real route. */
+export function connectionCandidates(
   graph: GraphData,
   key: string,
   direction: Direction,
   visible: readonly NavigationPoint[] = graph.nodes,
 ) {
   const origin = graph.nodes.find((p) => p.key === key);
-  if (!origin) return undefined;
+  if (!origin) return [];
   const at = visible.find((p) => p.key === key) ?? origin;
   const neighbours = new Set(
     graph.edges.flatMap((edge) =>
@@ -95,7 +108,50 @@ export function connectionTarget(
     .sort(
       (a, b) =>
         b.cosine - a.cosine || a.distance - b.distance || byKey(a.node, b.node),
-    )[0]?.node;
+    )
+    .map(
+      ({ node }): ConnectionCandidate => ({
+        node,
+        routes: graph.edges
+          .filter(
+            (edge) =>
+              (edge.from === key && edge.to === node.key) ||
+              (edge.to === key && edge.from === node.key),
+          )
+          .map((edge) => ({
+            edge,
+            direction: edge.from === key ? "outgoing" : "incoming",
+          })),
+      }),
+    );
+}
+
+/** Preview from one frozen origin/frame until explicitly accepted or cancelled. */
+export function stepConnectionChoice(
+  graph: GraphData,
+  key: string,
+  direction: Direction,
+  visible: readonly NavigationPoint[],
+  previous?: ConnectionChoice,
+): ConnectionChoice {
+  if (previous?.direction === direction) {
+    return {
+      ...previous,
+      index: previous.candidates.length
+        ? (previous.index + 1) % previous.candidates.length
+        : 0,
+    };
+  }
+  const origin = previous?.origin ?? key;
+  const positions =
+    previous?.positions ?? visible.map((point) => ({ ...point }));
+  return {
+    origin,
+    direction,
+    positions,
+    candidates: connectionCandidates(graph, origin, direction, positions),
+    index: 0,
+  };
 }
 
 export function heldDirection(keys: ReadonlySet<string>): Point {

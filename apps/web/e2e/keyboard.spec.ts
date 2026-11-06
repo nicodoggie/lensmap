@@ -112,7 +112,7 @@ test("Ctrl zoom shortcuts intercept browser defaults only for the focused viewer
   }
 });
 
-test("Ctrl browses without changing camera/selection; Space accepts and Shift follows edges from the visible target", async ({
+test("Ctrl browses without changing camera/selection; Shift previews edges and Space explicitly travels", async ({
   page,
 }, info) => {
   const map = await setup(page);
@@ -130,9 +130,15 @@ test("Ctrl browses without changing camera/selection; Space accepts and Shift fo
     fullPage: true,
   });
   await page.keyboard.press("Shift+ArrowRight");
+  await expect(gamma).toHaveAttribute("data-keyboard-target", "true");
+  await expect(alpha).toHaveAttribute("aria-pressed", "true");
+  expect(await styles(page)).toEqual(original);
+  await page.keyboard.press("Space");
   await expect(gamma).toHaveAttribute("aria-pressed", "true");
   await expect(map).toHaveAttribute("data-view", "lens");
   await page.keyboard.press("Shift+ArrowLeft");
+  await expect(gamma).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Space");
   await expect(beta).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Control+ArrowLeft");
   await expect(alpha).toHaveAttribute("data-keyboard-target", "true");
@@ -146,7 +152,9 @@ test("Ctrl browses without changing camera/selection; Space accepts and Shift fo
   await alpha.focus();
   await page.keyboard.press("Enter");
   await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Space");
   await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Space");
   await expect(gamma).toHaveAttribute("aria-pressed", "true");
   await expect(map).toBeFocused();
   await page.keyboard.press("Enter");
@@ -185,6 +193,7 @@ test("Enter carries the target across views, while Escape restores the exact pre
     page.getByRole("button", { name: "Beta", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Space");
   await expect(
     page.getByRole("button", { name: "Gamma", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");

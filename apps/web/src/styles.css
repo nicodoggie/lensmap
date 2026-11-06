@@ -221,6 +221,75 @@ h1 {
   opacity: 1;
   filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 6px currentColor);
 }
+.edge.connection-preview {
+  stroke-width: 4;
+  opacity: 1;
+  filter: drop-shadow(0 0 2px #d5f4ed) drop-shadow(0 0 7px currentColor);
+}
+.connection-chooser {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: min(290px, calc(100% - 24px));
+  max-height: 45%;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border: 1px solid #89bfb3;
+  border-radius: 10px;
+  background: #162832f5;
+  font-size: 11px;
+  user-select: text;
+}
+.connection-chooser h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.connection-chooser p {
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+.connection-chooser ol {
+  padding: 0;
+  margin: 0 0 8px;
+  list-style: none;
+  overflow: auto;
+  min-height: 0;
+}
+.connection-chooser li + li {
+  margin-top: 5px;
+}
+.connection-option {
+  width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+  padding: 7px 9px;
+}
+.connection-chooser strong,
+.connection-chooser span {
+  display: block;
+}
+.connection-chooser span {
+  color: #bdcbd6;
+  margin-top: 3px;
+}
+.connection-option[aria-pressed="true"] {
+  border-color: #d5f4ed;
+  background: #304c51;
+}
+.connection-chooser .outside-view {
+  color: #f7c46c;
+}
+.connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.connection-actions button {
+  font-size: 11px;
+  padding: 6px 8px;
+}
 .edge-halo {
   fill: none;
   stroke: #14202a;

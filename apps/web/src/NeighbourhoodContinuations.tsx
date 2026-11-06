@@ -9,12 +9,14 @@ export default function NeighbourhoodContinuations({
   centreKey,
   nodes,
   nodeRadius,
+  previewEdges,
 }: {
   continuations: readonly Continuation[];
   positions: ReadonlyMap<string, Point & { scale: number }>;
   centreKey: string;
   nodes: readonly GraphNode[];
   nodeRadius: number;
+  previewEdges: ReadonlySet<string>;
 }) {
   const prefix = useId();
   const origin = positions.get(centreKey);
@@ -77,11 +79,15 @@ export default function NeighbourhoodContinuations({
         <path
           key={segment.edge.key}
           data-continuation={segment.edge.key}
+          data-connection-preview={
+            previewEdges.has(segment.edge.key) ? "true" : undefined
+          }
           data-kind={segment.edge.kind}
           data-direction={segment.incoming ? "incoming" : "outgoing"}
           d={segment.path}
           stroke={`url(#${segment.id})`}
-          className={`edge continuation ${segment.edge.kind}`}
+          style={{ color: colours[segment.target.branch] }}
+          className={`edge continuation ${segment.edge.kind} ${previewEdges.has(segment.edge.key) ? "connection-preview" : ""}`}
           markerEnd={
             segment.incoming && segment.edge.kind === "cross"
               ? `url(#arrow-${segment.target.branch})`

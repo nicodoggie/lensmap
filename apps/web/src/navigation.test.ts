@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { GraphData, GraphNode } from "./graph";
 import {
   centralTarget,
-  connectionTarget,
+  connectionCandidates,
   heldDirection,
   panDistance,
   spatialTarget,
@@ -65,16 +65,21 @@ describe("keyboard target candidates", () => {
         { key: "parallel", from: "a", to: "b", kind: "branch" },
       ],
     };
-    expect(connectionTarget(graph, "a", "ArrowRight")?.key).toBe("b");
+    expect(connectionCandidates(graph, "a", "ArrowRight")[0]?.node.key).toBe(
+      "b",
+    );
     expect(
-      connectionTarget(graph, "b", "ArrowRight", [p("b", 40, 10)])?.key,
+      connectionCandidates(graph, "b", "ArrowRight", [p("b", 40, 10)])[0]?.node
+        .key,
     ).toBe("c");
     expect(
-      connectionTarget(graph, "a", "ArrowUp", [p("a", 0, 0), p("b", 0, -60)])
-        ?.key,
+      connectionCandidates(graph, "a", "ArrowUp", [
+        p("a", 0, 0),
+        p("b", 0, -60),
+      ])[0]?.node.key,
     ).toBe("b");
-    expect(connectionTarget(graph, "a", "ArrowLeft")).toBeUndefined();
-    expect(connectionTarget(graph, "missing", "ArrowRight")).toBeUndefined();
+    expect(connectionCandidates(graph, "a", "ArrowLeft")).toEqual([]);
+    expect(connectionCandidates(graph, "missing", "ArrowRight")).toEqual([]);
     expect(graph.nodes[1].x).toBe(100);
   });
 });

@@ -20,7 +20,7 @@ interface Controls {
   onPan: (delta: Point) => void;
   onZoom: (factor: number) => void;
   onSpatial: (direction: Direction) => void;
-  onTraverse: (direction: Direction) => void;
+  onConnection: (direction: Direction) => void;
   onAccept: () => void;
   onToggle: () => void;
   onEscape: () => void;
@@ -83,8 +83,8 @@ export function useMapKeyboard(
       if (event.ctrlKey || event.shiftKey) {
         stop();
         if (event.ctrlKey && !event.shiftKey) controls.onSpatial(event.key);
-        else if (event.shiftKey && !event.ctrlKey)
-          controls.onTraverse(event.key);
+        else if (event.shiftKey && !event.ctrlKey && !event.repeat)
+          controls.onConnection(event.key);
         return;
       }
       if (!controls.canPan || event.repeat || keys.current.has(event.key))

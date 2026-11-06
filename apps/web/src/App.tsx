@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import Markdown from "react-markdown";
+import ConnectionChooser from "./ConnectionChooser";
 import { limitMagnification } from "./clearance";
 import { parseSource } from "./document/parse";
 import { colours, type GraphData, label } from "./graph";
@@ -20,10 +21,11 @@ import {
 } from "./lens";
 import NeighbourhoodContinuations from "./NeighbourhoodContinuations";
 import {
+  type ConnectionChoice,
   centralTarget,
-  connectionTarget,
   type Direction,
   spatialTarget,
+  stepConnectionChoice,
 } from "./navigation";
 import { neighbourhood } from "./neighbourhood";
 import Sidebar from "./Sidebar";
@@ -79,6 +81,18 @@ export default function App() {
   const [keyboardTarget, setKeyboardTarget] = useState<string>();
   const [keyboardActive, setKeyboardActive] = useState(false);
   const [maximumPanSpeed, setMaximumPanSpeed] = useState(900);
+  const [connectionChoice, setConnectionChoice] = useState<ConnectionChoice>();
+  const dismissConnectionChoice = useCallback(() => {
+    const focused = document.activeElement;
+    if (
+      focused instanceof Element &&
+      canvas.current?.contains(focused) &&
+      focused.closest("[data-connection-chooser]")
+    ) {
+      canvas.current.focus({ preventScroll: true });
+    }
+    setConnectionChoice(undefined);
+  }, []);
   const returnOverview = useRef(false);
   const keyboard = useMapKeyboard(canvas, {
     canPan: !overview,
@@ -87,14 +101,14 @@ export default function App() {
     onPan: panView,
     onZoom: zoomView,
     onSpatial: moveTarget,
-    onTraverse: traverseTarget,
+    onConnection: previewConnection,
     onAccept: () => {
       if (target) focusNode(target.key);
     },
     onToggle: () => {
       if (target) toggleNeighbourhood(target.key);
     },
-    onEscape: restoreMap,
+    onEscape: escapeNavigation,
   });
   const setViewCamera = inNeighbourhood ? setNeighbourhoodCamera : setCamera;
   const shownStrength = inNeighbourhood ? neighbourhoodStrength : strength;
@@ -112,6 +126,7 @@ export default function App() {
     const element = canvas.current;
     if (!element) return;
     const observer = new ResizeObserver(([entry]) => {
+      dismissConnectionChoice();
       setSize({
         width: entry.contentRect.width,
         height: entry.contentRect.height,
@@ -119,14 +134,20 @@ export default function App() {
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [dismissConnectionChoice]);
 
   useEffect(() => {
     const element = canvas.current;
     if (!element) return;
     const wheel = (event: WheelEvent) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest("[data-connection-chooser]")
+      )
+        return;
       cancelActivation();
       keyboard.stop();
+      dismissConnectionChoice();
       if (overview) return;
       event.preventDefault();
       const pixels =
@@ -141,7 +162,14 @@ export default function App() {
     };
     element.addEventListener("wheel", wheel, { passive: false });
     return () => element.removeEventListener("wheel", wheel);
-  }, [overview, size.height, setViewCamera, cancelActivation, keyboard.stop]);
+  }, [
+    overview,
+    size.height,
+    setViewCamera,
+    cancelActivation,
+    keyboard.stop,
+    dismissConnectionChoice,
+  ]);
 
   const shownCamera = inNeighbourhood
     ? neighbourhoodCamera
@@ -172,11 +200,21 @@ export default function App() {
       Math.abs(point.x) <= size.width / 2 &&
       Math.abs(point.y) <= size.height / 2,
   );
-  const target =
+  const ordinaryTarget =
     keyboardTarget === undefined
       ? centralTarget(visiblePoints)
       : visiblePoints.find((point) => point.key === keyboardTarget);
+  const pendingConnection =
+    connectionChoice?.candidates[connectionChoice.index];
+  const target = connectionChoice ? pendingConnection?.node : ordinaryTarget;
   const targetNode = nodes.find((node) => node.key === target?.key);
+  const choiceOrigin = nodes.find(
+    (node) => node.key === connectionChoice?.origin,
+  );
+  const previewEdges = new Set(
+    pendingConnection?.routes.map((route) => route.edge.key),
+  );
+  const visibleKeys = new Set(visiblePoints.map((point) => point.key));
   const active = nodes.find((node) => node.key === selected) ?? nodes[0];
   const incident = edges.filter(
     (edge) => edge.from === active?.key || edge.to === active?.key,
@@ -186,12 +224,19 @@ export default function App() {
     incident.flatMap((edge) => [edge.from, edge.to]),
   );
   // Paint selected routes last: unrelated dark edge halos must not cover them.
+  const sceneEdges = local?.edges ?? edges;
   const drawnEdges = [
-    ...(local?.edges ?? edges).filter((edge) => !connectedEdges.has(edge.key)),
-    ...incident,
+    ...sceneEdges.filter(
+      (edge) => !connectedEdges.has(edge.key) && !previewEdges.has(edge.key),
+    ),
+    ...sceneEdges.filter(
+      (edge) => connectedEdges.has(edge.key) && !previewEdges.has(edge.key),
+    ),
+    ...sceneEdges.filter((edge) => previewEdges.has(edge.key)),
   ];
 
   function panView(delta: { x: number; y: number }) {
+    dismissConnectionChoice();
     setKeyboardTarget(undefined);
     setViewCamera((current) => panCamera(current, delta));
   }
@@ -199,23 +244,36 @@ export default function App() {
   function zoomView(factor: number) {
     cancelActivation();
     keyboard.stop();
+    dismissConnectionChoice();
     if (!overview) setViewCamera((current) => zoomCamera(current, factor));
   }
 
   function moveTarget(direction: Direction) {
-    const next = spatialTarget(visiblePoints, target?.key, direction);
-    if (next) setKeyboardTarget(next.key);
+    const from = visibleKeys.has(target?.key ?? "")
+      ? target?.key
+      : (connectionChoice?.origin ?? ordinaryTarget?.key);
+    const next = spatialTarget(visiblePoints, from, direction);
+    dismissConnectionChoice();
+    setKeyboardTarget(next?.key ?? from);
   }
 
-  function traverseTarget(direction: Direction) {
-    if (!target) return;
-    const next = connectionTarget(
-      graph,
-      target.key,
-      direction,
-      navigationPoints,
-    );
-    if (next) focusNode(next.key);
+  function previewConnection(direction: Direction) {
+    const origin = connectionChoice?.origin ?? target?.key;
+    if (origin)
+      setConnectionChoice((previous) =>
+        stepConnectionChoice(
+          graph,
+          origin,
+          direction,
+          navigationPoints,
+          previous,
+        ),
+      );
+  }
+
+  function escapeNavigation() {
+    if (connectionChoice) dismissConnectionChoice();
+    else restoreMap();
   }
 
   function restoreMap() {
@@ -260,6 +318,7 @@ export default function App() {
       setMessage(`The selected node is no longer in the graph.`);
       return;
     }
+    dismissConnectionChoice();
     retainViewerFocus(key, inNeighbourhood);
     setSelected(key);
     setKeyboardTarget(key);
@@ -284,6 +343,7 @@ export default function App() {
   function toggleNeighbourhood(key: string) {
     const node = nodes.find((candidate) => candidate.key === key);
     if (!node) return;
+    dismissConnectionChoice();
     cancelActivation();
     keyboard.stop();
     stopDrag();
@@ -304,6 +364,7 @@ export default function App() {
   }
 
   function showMap(nextOverview: boolean) {
+    dismissConnectionChoice();
     cancelActivation();
     keyboard.stop();
     stopDrag();
@@ -345,6 +406,7 @@ export default function App() {
   }
 
   function applyGraph(next: GraphData) {
+    dismissConnectionChoice();
     cancelActivation();
     keyboard.stop();
     stopDrag();
@@ -429,6 +491,7 @@ export default function App() {
                 disabled={overview}
                 onChange={(event) => {
                   cancelActivation();
+                  dismissConnectionChoice();
                   setViewStrength(Number(event.target.value));
                 }}
               />
@@ -467,6 +530,7 @@ export default function App() {
               type="button"
               className="quiet"
               onClick={() => {
+                dismissConnectionChoice();
                 cancelActivation();
                 keyboard.stop();
                 stopDrag();
@@ -496,7 +560,9 @@ export default function App() {
             aria-label="Spatial map"
             aria-describedby="map-help"
             aria-activedescendant={
-              keyboardActive && target ? `thought-${target.key}` : undefined
+              keyboardActive && target
+                ? `${connectionChoice ? "connection-option" : "thought"}-${target.key}`
+                : undefined
             }
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Arrow-key panning needs a focus target separate from node buttons.
             tabIndex={0}
@@ -505,7 +571,10 @@ export default function App() {
                 "[data-node]",
               );
               setKeyboardActive(event.target === event.currentTarget || !!node);
-              if (node) setKeyboardTarget(node.dataset.node);
+              if (node) {
+                dismissConnectionChoice();
+                setKeyboardTarget(node.dataset.node);
+              }
             }}
             onBlurCapture={(event) => {
               if (
@@ -516,6 +585,10 @@ export default function App() {
                 setKeyboardActive(false);
             }}
             onPointerDown={(event) => {
+              if (
+                (event.target as Element).closest("[data-connection-chooser]")
+              )
+                return;
               if (event.button !== 0 || !event.isPrimary) return;
               // A cancelled gesture may not produce a click to consume. A new
               // pointer gesture, including a zoom-control click, starts fresh.
@@ -637,6 +710,7 @@ export default function App() {
                     centreKey={selected}
                     nodes={nodes}
                     nodeRadius={nodeRadius}
+                    previewEdges={previewEdges}
                   />
                 )}
                 {drawnEdges.map((edge) => {
@@ -676,11 +750,14 @@ export default function App() {
                       <path
                         data-edge={`${edge.from}-${edge.to}`}
                         data-edge-key={edge.key}
+                        data-connection-preview={
+                          previewEdges.has(edge.key) ? "true" : undefined
+                        }
                         data-kind={edge.kind}
                         d={path}
                         stroke={colours[to.node.branch]}
                         style={{ color: colours[to.node.branch] }}
-                        className={`edge ${edge.kind} ${connectedEdges.has(edge.key) ? "connected" : local ? "context" : ""}`}
+                        className={`edge ${edge.kind} ${connectedEdges.has(edge.key) ? "connected" : local ? "context" : ""} ${previewEdges.has(edge.key) ? "connection-preview" : ""}`}
                         markerEnd={
                           edge.kind === "cross"
                             ? `url(#arrow-${to.node.branch})`
@@ -749,6 +826,23 @@ export default function App() {
                 );
               })}
             </div>
+            {connectionChoice && choiceOrigin && (
+              <ConnectionChooser
+                choice={connectionChoice}
+                origin={choiceOrigin}
+                visibleKeys={visibleKeys}
+                onPick={(index) => {
+                  setConnectionChoice((current) =>
+                    current ? { ...current, index } : current,
+                  );
+                  canvas.current?.focus({ preventScroll: true });
+                }}
+                onAccept={() => {
+                  if (pendingConnection) focusNode(pendingConnection.node.key);
+                }}
+                onCancel={dismissConnectionChoice}
+              />
+            )}
             <div className="zoom-controls">
               <button
                 type="button"
@@ -781,13 +875,16 @@ export default function App() {
             </p>
             <p id="map-help">
               Drag / arrows pan · hold to accelerate · Ctrl+= / Ctrl+- zoom ·
-              Ctrl+arrows browse · Shift+arrows follow connections · Space
-              focuses · Enter / double-click switches views · Esc restores map
+              Ctrl+arrows browse · Shift+arrows choose exits · Space travels ·
+              Enter / double-click switches views · Esc cancels choice /
+              restores map
             </p>
             {keyboardActive && (
               <p className="keyboard-target-label">
                 Target:{" "}
-                {targetNode ? label(targetNode) : "none in the central region"}
+                {targetNode
+                  ? `${label(targetNode)}${visibleKeys.has(targetNode.key) ? "" : " (outside this view)"}`
+                  : "none in the central region"}
               </p>
             )}
             <div className="legend">
@@ -816,6 +913,9 @@ export default function App() {
         {message}
         {keyboardActive &&
           ` Keyboard target: ${targetNode ? label(targetNode) : "none"}.`}
+        {connectionChoice &&
+          choiceOrigin &&
+          ` Connection choice from ${label(choiceOrigin)}. ${pendingConnection ? `${label(pendingConnection.node)}${visibleKeys.has(pendingConnection.node.key) ? "" : ", outside this view"}. Space travels; Enter switches view.` : "No connections in this direction."} Escape cancels choice.`}
       </p>
       <footer className="page-footer">
         <span>
