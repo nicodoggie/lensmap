@@ -60,3 +60,22 @@ nodes:
           Open the nearby Markdown guide through the editor's resource opener.
           A standalone browser cannot open local files; the viewer reports
           that limitation without replacing the current map.
+
+      # Solid prevention connectors end in a blocking bar beside the outcome.
+      - id: pier-closed
+        summary: Pier closed for repairs
+        full_text: |
+          Suppose the boarding area and its shelter are both off limits.
+          This event prevents the two possibilities below; the thoughts stay
+          visible so we can plan around what is no longer available.
+
+          Select this thought and explore its neighbourhood to inspect the
+          blocking bars. They belong beside the affected thoughts, not in
+          the middle of the lines. No simulation or automatic hiding occurs.
+        connections:
+          - type: prevents
+            summary: Board at this pier
+            full_text: Find another landing or postpone the crossing.
+          - type: prevents
+            summary: Use the pier shelter
+            full_text: Arrange another dry place for passengers to wait.

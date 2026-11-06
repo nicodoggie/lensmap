@@ -13,7 +13,8 @@ code actions. The `version: v1` format remains incomplete and experimental.
   editable standalone copy, not a second source for the playground's default.
 - [linked-maps.lensmap](linked-maps.lensmap) — a small notebook with portals to
   both samples, a direct jump to Night Ferry's tide window, web references and
-  an ordinary file link. Includes a minimal address-only portal.
+  an ordinary file link. Includes a minimal address-only portal and a pier
+  closure with two `prevents` connections.
 
 None of the samples requires authored positions. The existing positioned comparison
 remains at `apps/web/examples/night-ferry-positioned.yaml`; the playground's
@@ -29,6 +30,11 @@ input remains at `apps/web/src/sample.yaml`.
    **Jump to the tide window** enters Lens centred on the authored `tides` ID.
 3. Use the preview's **Back** action to return without losing your view. Web and
    ordinary file links use **Open external link** and the editor's opener.
+
+To inspect prevention styling, select **Pier closed for repairs** and choose
+**Explore neighbourhood**. Its solid connectors end in T-bars beside **Board
+at this pier** and **Use the pier shelter**. The blocked thoughts remain visible
+and selectable; this is a described relationship, not an event simulator.
 
 Keep these files together: relative URLs resolve from the source map's location.
 Pasting this sample into the standalone playground does not give it a source
