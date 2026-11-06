@@ -78,9 +78,19 @@ repository's tests.
   Reveal is deliberate, not a side effect of map exploration. The server mediates
   it through the configured Zed CLI and only for attached documents. CLI columns
   use UTF-8 bytes; LSP and engine positions use zero-based UTF-16.
-- Multiple attached documents are selectable. Switching documents currently
-  remounts the viewer; per-document camera history across switches is not yet
-  preserved. Normal live updates within a document preserve exploration.
+- Multiple attached documents are selectable. Map portals and viewer-owned
+  Back/Forward retain the complete view state without overwriting newer source.
+  Reopening an attachment invalidates old internal keys, even at the same URI
+  and revision. Normal live updates preserve exploration.
+- `map_link` resolves relative to the source buffer's URI and loads only a
+  currently valid attached buffer. Open an unavailable destination in Zed first;
+  Lensmap does not read arbitrary saved files or change editor focus merely to
+  inspect a portal. Missing fragments retain the map and offer **Open destination
+  map anyway**; whole-map entry uses Overview and targeted entry uses Lens.
+- `external_link` opening is explicit and delegated through advertised LSP
+  `window/showDocument`, not the OS opener used to launch the preview. Unsupported
+  editors return a visible limitation. Native Zed 1.27 file opening was exercised;
+  web-browser preference permutations were not. See [qualification](verification/default-connections.md).
 - Closing/restarting the language server closes its HTTP endpoint. The browser
   marks itself disconnected and retains the last map; reopen from Zed after a
   restart to authorize the new session. There is no permanent daemon.
@@ -104,6 +114,11 @@ Tool requests use `Authorization: Bearer <apiToken>`:
 - `POST /api/centre`: `{uri, position: {line, character}, baseRevision}`;
   positions are zero-based UTF-16. This is a view command, not a source edit.
 - `POST /api/reveal`: `{uri, key}`; host-mediated explicit source navigation.
+- `POST /api/open-destination`: `{uri, key, baseRevision, attachmentId}`; open an
+  external portal from current valid attached analysis. Extra URL overrides,
+  stale revisions/attachments, unsafe addresses and non-external thoughts are
+  rejected. The server derives the URL from source; clients cannot submit an
+  arbitrary opening address. Lack of host opener support returns HTTP 501.
 
 Keys are internal session identities, not authored IDs or stable cross-session
 addresses. Read the current snapshot rather than constructing keys yourself.

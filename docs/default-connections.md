@@ -2,9 +2,9 @@
 
 ## Status and purpose
 
-**Draft for review.** This document consolidates the agreed default vocabulary, progressive authoring, rendering and navigation behavior. The section [Completion defaults proposed for review](#completion-defaults-proposed-for-review) makes the remaining recommended details explicit rather than treating them as decisions already confirmed in discussion.
+**Implemented experimental specification.** Nico's implementation request accepted this document, including its explicitly recorded [completion defaults](#completion-defaults-proposed-for-review). It remains the behavior contract, not a frozen public schema. See [qualification and host limitations](verification/default-connections.md) for exercised evidence and its limits.
 
-This is a feature specification, not an implementation plan or a claim that the feature exists. The current [experimental schema](schema-v1.md) does not accept relationship `type` or portal `url` fields. `version: v1` remains incomplete and experimental.
+The current [experimental schema](schema-v1.md) accepts the supplied relationship `type` and portal `url` fields. `version: v1` remains incomplete and experimental. Custom declarations and inherited defaults remain deferred.
 
 The goal is to let authors enrich ordinary thought connections with a small vocabulary, and connect to external thoughts through visible portals, without restructuring their notes or losing their place in the map.
 
@@ -92,27 +92,27 @@ nodes:
     full_text: Enough House of Lords votes to pass the ludicrous bill
 ```
 
-The second example is a design requirement, not currently accepted input.
+Both examples are accepted. Adding relationship metadata preserves the existing source form.
 
 ## Supplied vocabulary and visual defaults
 
 For an entry authored under A with destination B:
 
-| Type | Meaning | Default presentation |
-| --- | --- | --- |
-| Type omitted | Connected, without a more specific claim | Solid line; no endpoint markers |
-| `precedes` | A comes before B in the described sequence | Solid line; arrowhead at B |
-| `follows` | A comes after B in the described sequence | Solid line; arrowhead at A |
-| `prevents` | A rules out B | Solid line; blocking T-bar at B |
-| `optional` | An optional connection or branch | Dashed line; no endpoint markers |
-| `external_link` | An ordinary external resource | Solid line without arrowheads; external-link icon on the destination thought |
-| `map_link` | A Lensmap destination | Solid line without arrowheads; distinctive swirly portal on the destination thought |
+| Type            | Meaning                                    | Default presentation                                                                |
+| --------------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Type omitted    | Connected, without a more specific claim   | Solid line; no endpoint markers                                                     |
+| `precedes`      | A comes before B in the described sequence | Solid line; arrowhead at B                                                          |
+| `follows`       | A comes after B in the described sequence  | Solid line; arrowhead at A                                                          |
+| `prevents`      | A rules out B                              | Solid line; blocking T-bar at B                                                     |
+| `optional`      | An optional connection or branch           | Dashed line; no endpoint markers                                                    |
+| `external_link` | An ordinary external resource              | Solid line without arrowheads; external-link icon on the destination thought        |
+| `map_link`      | A Lensmap destination                      | Solid line without arrowheads; distinctive swirly portal on the destination thought |
 
 `precedes` and `follows` provide inverse readings, with the arrow pointing toward the later item in the sequence being described. Neither promises that the sequence is causal, immediate or executable. Source ordering does not implicitly create either relationship.
 
 A prevention edge remains a real visible connection. For example, an NPC's death can prevent access to their house's resources or sufficient legislative votes. Keep those unavailable possibilities visible as useful thoughts; do not delete their edges, hide their nodes or disable their controls.
 
-Default styles do not distinguish nested definitions from `node_id` references. Retain their structural distinction for layout/source ownership, not as an automatic dash or arrow. The current dashed-arrowed reference presentation is superseded by these defaults when this feature is implemented.
+Default styles do not distinguish nested definitions from `node_id` references. Retain their structural distinction for layout/source ownership, not as an automatic dash or arrow. These defaults supersede the former dashed-arrowed reference presentation.
 
 Styling primitives have no universal domain meaning. Our `optional` definition uses dashes, but a later custom vocabulary may assign another meaning to that style. Do not introduce an optionality qualifier system to express combinations.
 
@@ -140,7 +140,7 @@ Both types use `url` beside `type`. Type plus URL is sufficient; local prose is 
 
 Authors may progressively add a summary, Markdown, positioning and local connections without restructuring the entry. Existing content precedence and explicit null/empty placeholder behavior still apply when content fields are present.
 
-This example illustrates specified portal authoring, not currently accepted input:
+This example illustrates accepted portal authoring:
 
 ```yaml
 version: v1
@@ -244,7 +244,7 @@ The fallback does not bypass map parsing/validation, host access rules or resour
 
 ## Completion defaults proposed for review
 
-These recommendations close small gaps in the agreed behavior. They are part of this review draft, not claims that each detail was separately approved.
+These completion defaults were explicit in the reviewed draft and included in the subsequent implementation request. They close small gaps without changing progressive authoring.
 
 1. **Explicit neutral name:** accept `type: connected` as an explicit neutral relation, rendered like an omitted type. Omission remains genuinely untyped; do not rewrite shorthand or introduce inherited defaults.
 2. **Strict entry validation:** `type`, when present, is one exact supported string, not null, an array or an inferred spelling. Ordinary rich definitions still require a present content field. Portal definitions require a nonblank `url` and matching link type, but no prose. Reject `url` on ordinary relation definitions and mixed `node_id`/definition-content/URL overrides; do not guess which destination was meant.
@@ -263,9 +263,9 @@ Generate structural JSON Schema from the owning Zod input schema, including the 
 
 The existing [Zed bridge](zed-browser.md) is evidence for current buffer/host boundaries, not proof that new local loading, portal opening or cross-map history already works. Native host loading/opening and browser-history integration are bounded implementation qualifications. Stop for review if they require broader privileges, a changed host policy, a new helper/daemon, desktop packaging or a different integration route.
 
-## Acceptance gates for later implementation
+## Acceptance gates
 
-These are requirements to verify after implementation, not completed test results.
+These remain the acceptance requirements. The separate [qualification record](verification/default-connections.md) records actual test and native-host evidence rather than turning this list into self-certifying completion claims.
 
 - Existing strings, rich thoughts, references and bare arrays retain their topology and source-preserving behavior. Adding a type does not reparent nodes, infer relationships or require new IDs/wrappers.
 - Flat inline and referenced relationships retain independent edge metadata across live edits. Explicit null/empty placeholders and their subtrees survive promotion. Invalid types or ambiguous destinations preserve raw source and the last valid graph, with correctly located diagnostics.
@@ -281,4 +281,4 @@ Use focused engine tests and native schema export/parity checks for owned semant
 
 ## Review and stop rule
 
-Review the completion defaults above together with the already-confirmed behavior. Once this default specification is accepted, the next design topic is custom type declarations and shared vocabularies. Acceptance of this document does not by itself authorize implementation, publication, a Tauri app or any deferred feature.
+The default slice was separately authorized for implementation. Custom type declarations and shared vocabularies are the next design topic, not implied implementation work. No publication, Tauri app, wider filesystem authority or other deferred feature is authorized by completing this specification.

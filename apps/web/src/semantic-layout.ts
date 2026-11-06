@@ -44,21 +44,23 @@ export function layoutSemanticGraph(
       colour(node.key, branches[i % branches.length], 0);
     });
   const drafts: NodeDraft[] = graph.nodes.map(
-    ({ key, id, title, markdown, unresolved, position }) => ({
+    ({ key, id, title, markdown, unresolved, position, destination }) => ({
       key,
       id,
       title,
       markdown,
       unresolved,
       position,
+      ...(destination ? { destination } : {}),
       branch: colours.get(key) ?? "blue",
     }),
   );
-  const edges = graph.edges.map(({ key, from, to, kind }) => ({
+  const edges = graph.edges.map(({ key, from, to, kind, type }) => ({
     key,
     from,
     to,
     kind,
+    ...(type !== undefined ? { type } : {}),
   }));
   if (previous && layoutKey(previous.semantic) === layoutKey(graph)) {
     const points = new Map(

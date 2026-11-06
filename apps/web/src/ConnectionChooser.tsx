@@ -1,3 +1,4 @@
+import { connectionWording } from "@lensmap/document";
 import { useEffect, useRef } from "react";
 import { type GraphNode, label } from "./graph";
 import type { ConnectionChoice } from "./navigation";
@@ -9,7 +10,9 @@ export default function ConnectionChooser({
   onPick,
   onAccept,
   onCancel,
+  onActivatePortal,
 }: {
+  onActivatePortal?: (node: GraphNode) => void;
   choice: ConnectionChoice;
   origin: GraphNode;
   visibleKeys: ReadonlySet<string>;
@@ -49,14 +52,13 @@ export default function ConnectionChooser({
               >
                 <strong>{label(candidate.node)}</strong>
                 <span id={`connection-details-${candidate.node.key}`}>
-                  {[
-                    ...new Set(
-                      candidate.routes.map(
-                        (route) =>
-                          `${route.direction} ${route.edge.kind === "cross" ? "cross-link" : "branch"}`,
-                      ),
-                    ),
-                  ].join(" · ")}
+                  {candidate.routes.map((route, routeIndex) => (
+                    <span key={`${route.edge.key}:${route.direction}`}>
+                      {routeIndex > 0 ? " · " : ""}
+                      {connectionWording(route.edge.type, route.direction)}
+                      {` (${route.direction} ${route.edge.kind === "branch" ? "branch" : "cross-link"})`}
+                    </span>
+                  ))}
                   {!visibleKeys.has(candidate.node.key) && (
                     <span className="outside-view">outside this view</span>
                   )}
@@ -76,6 +78,21 @@ export default function ConnectionChooser({
         >
           Go to thought
         </button>
+        {choice.candidates[choice.index]?.node.destination && (
+          <button
+            type="button"
+            disabled={!onActivatePortal}
+            onClick={() =>
+              onActivatePortal?.(choice.candidates[choice.index].node)
+            }
+          >
+            Open{" "}
+            {choice.candidates[choice.index].node.destination?.kind ===
+            "map_link"
+              ? "destination map"
+              : "external link"}
+          </button>
+        )}
         <button type="button" onClick={onCancel}>
           Cancel choice
         </button>

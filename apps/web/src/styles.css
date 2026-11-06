@@ -202,9 +202,18 @@ h1 {
   stroke-width: 2.5;
   opacity: 0.92;
 }
-.edge.cross {
-  stroke-dasharray: 7 6;
-  stroke-width: 2;
+.edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+}
+.destination-icon {
+  display: block;
+  font-size: 1.4em;
+}
+.portal-actions p {
+  overflow-wrap: anywhere;
 }
 .edge.context {
   opacity: 0.45;

@@ -40,6 +40,8 @@ async function editor() {
         resolve(web, "../../packages/language-server/dist/main.js"),
       "--stdio",
       "--no-open",
+      "--assets",
+      resolve(web, "dist"),
       "--zed",
       opener,
     ],
@@ -350,6 +352,104 @@ test("focused semantic content edits round-trip through real stdio buffer readba
     await expect(
       page.getByRole("button", { name: "Agent edit", exact: true }),
     ).toBeVisible();
+    expect(await readFile(f.file, "utf8")).toBe(original);
+  } finally {
+    await f.close();
+  }
+});
+
+test("portal navigation reads attached buffers and history returns to current source without host history", async ({
+  page,
+}) => {
+  const f = await editor();
+  const target = new URL("destination.lensmap", f.uri).href;
+  const portal = `version: v1
+nodes:
+  - id: home
+    summary: Home
+    connections:
+      - type: map_link
+        summary: Visit destination
+        url: ./destination.lensmap#missing
+`;
+  try {
+    await f.change(portal);
+    await f.go(page);
+    const initialURL = page.url();
+    await page
+      .getByRole("button", { name: "Visit destination", exact: true })
+      .dblclick();
+    await expect(page.getByRole("alert")).toContainText("not attached");
+    await f.client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: target,
+        version: 1,
+        languageId: "yaml",
+        text: "version: v1\nnodes: [{id: there, summary: There}]\n",
+      },
+    });
+    await expect(
+      page.getByRole("option", { name: "destination.lensmap" }),
+    ).toHaveCount(1);
+    await page
+      .getByRole("button", { name: "Visit destination", exact: true })
+      .dblclick();
+    await expect(page.getByRole("alert")).toContainText("missing");
+    await f.client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: target, version: 2 },
+      contentChanges: [{ text: "version: v1\nnodes: [" }],
+    });
+    await expect
+      .poll(async () => {
+        const response = await fetch(
+          `${f.origin}/api/document?uri=${encodeURIComponent(target)}`,
+          { headers: f.headers },
+        );
+        return (await response.json()).valid;
+      })
+      .toBe(false);
+    await page
+      .getByRole("button", { name: "Open destination map anyway" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText("not currently valid");
+    await expect(
+      page.getByRole("button", { name: "Home", exact: true }),
+    ).toBeVisible();
+    await f.client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: target, version: 3 },
+      contentChanges: [
+        { text: "version: v1\nnodes: [{id: there, summary: There}]\n" },
+      ],
+    });
+    await expect
+      .poll(async () => {
+        const response = await fetch(
+          `${f.origin}/api/document?uri=${encodeURIComponent(target)}`,
+          { headers: f.headers },
+        );
+        return (await response.json()).valid;
+      })
+      .toBe(true);
+    await page
+      .getByRole("button", { name: "Visit destination", exact: true })
+      .dblclick();
+    await expect(page.getByRole("alert")).toContainText("missing");
+    await page
+      .getByRole("button", { name: "Open destination map anyway" })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "There", exact: true }),
+    ).toBeVisible();
+    await f.change(portal.replace("summary: Home", "summary: Current home"));
+    await page.getByRole("button", { name: "Back", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Current home", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Forward", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "There", exact: true }),
+    ).toBeVisible();
+    expect(page.url()).toBe(initialURL);
     expect(await readFile(f.file, "utf8")).toBe(original);
   } finally {
     await f.close();

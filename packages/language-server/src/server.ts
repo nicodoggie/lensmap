@@ -7,7 +7,9 @@ import {
 } from "node:http";
 import { extname, resolve, sep } from "node:path";
 import {
+  ConnectionTypeSchema,
   type ContentPatch,
+  connectionWording,
   DocumentSession,
   type DocumentSnapshot,
   type PreparedEdit,
@@ -162,6 +164,7 @@ export async function startServer(
   let closed = false;
   let shutdown = false;
   let canApply = false;
+  let canShowDocument = false;
   let writeQueue: Promise<unknown> = Promise.resolve();
   let closePromise: Promise<void> | undefined;
   let origin = "";
@@ -432,7 +435,12 @@ export async function startServer(
         }
         if (
           method === "POST" &&
-          ["/api/content", "/api/reveal", "/api/centre"].includes(url.pathname)
+          [
+            "/api/content",
+            "/api/reveal",
+            "/api/centre",
+            "/api/open-destination",
+          ].includes(url.pathname)
         ) {
           const payload = await body(request);
           if (url.pathname === "/api/content") {
@@ -454,6 +462,82 @@ export async function startServer(
               200,
               await reveal(text(payload.uri), text(payload.key)),
             );
+            return;
+          }
+          if (url.pathname === "/api/open-destination") {
+            if (
+              Object.keys(payload).some(
+                (key) =>
+                  !["uri", "key", "baseRevision", "attachmentId"].includes(key),
+              )
+            )
+              throw new HttpError(
+                400,
+                "Provide attached thought identity, not an opening URL.",
+              );
+            const uri = text(payload.uri);
+            const snapshot = current(uri).session.snapshot();
+            if (
+              payload.baseRevision !== snapshot.revision ||
+              typeof payload.attachmentId !== "string" ||
+              payload.attachmentId !== snapshot.attachmentId
+            )
+              throw new HttpError(
+                409,
+                "The source or attachment changed; select the portal again.",
+              );
+            const destination = snapshot.graph?.nodes.find(
+              (node) => node.key === text(payload.key),
+            )?.destination;
+            if (destination?.kind !== "external_link")
+              throw new HttpError(
+                404,
+                "No external destination on this thought.",
+              );
+            if (
+              Array.from(destination.url).some(
+                (c) => c.charCodeAt(0) <= 32 || c.charCodeAt(0) === 127,
+              )
+            )
+              throw new HttpError(
+                400,
+                "The destination address contains invalid whitespace or control characters.",
+              );
+            let target: URL;
+            try {
+              target = new URL(destination.url, uri);
+              decodeURI(target.pathname);
+              decodeURIComponent(target.hash.slice(1));
+            } catch {
+              throw new HttpError(400, "The destination address is invalid.");
+            }
+            if (
+              !["http:", "https:", "file:"].includes(target.protocol) ||
+              target.username ||
+              target.password
+            )
+              throw new HttpError(
+                400,
+                "This destination scheme or embedded credentials are unsupported.",
+              );
+            if (!canShowDocument)
+              throw new HttpError(
+                501,
+                "This editor does not provide a destination opener.",
+              );
+            // Let the editor handle URLs and files using its own preferences.
+            // The preview-launching OS opener is intentionally not reused.
+            const result = await connection.window.showDocument({
+              uri: target.href,
+              external: false,
+              takeFocus: true,
+            });
+            if (!result.success)
+              throw new HttpError(
+                502,
+                "The editor could not open this destination.",
+              );
+            json(response, 200, { opened: true });
             return;
           }
           const key = focus(
@@ -546,6 +630,8 @@ export async function startServer(
   };
   connection.onInitialize((params) => {
     canApply = params.capabilities.workspace?.applyEdit === true;
+    canShowDocument =
+      params.capabilities.window?.showDocument?.support === true;
     return {
       capabilities: {
         positionEncoding: "utf-16",
@@ -651,9 +737,16 @@ export async function startServer(
   });
   connection.onCompletion(({ textDocument, position: at }) => {
     const session = entries.get(textDocument.uri)?.session;
-    if (!session?.snapshot().valid || session.snapshot().pending) return [];
+    if (!session) return [];
     const line =
       session.source.split(/\r?\n/)[at.line]?.slice(0, at.character) ?? "";
+    if (/^\s*(?:-\s*)?type:\s*[^#]*$/.test(line))
+      return ConnectionTypeSchema.options.map((type) => ({
+        label: type,
+        kind: CompletionItemKind.EnumMember,
+        detail: connectionWording(type, "outgoing"),
+      }));
+    if (!session.snapshot().valid || session.snapshot().pending) return [];
     if (!/^\s*(?:-\s*)?node_id:\s*[^#]*$/.test(line)) return [];
     return (
       session.snapshot().graph?.nodes.flatMap((node) =>

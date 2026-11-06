@@ -19,7 +19,7 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
-async function fixture() {
+async function fixture(showDocument = false) {
   const assets = await mkdtemp(join(tmpdir(), "lensmap-server-"));
   cleanups.push(() => rm(assets, { recursive: true, force: true }));
   await writeFile(
@@ -43,6 +43,11 @@ async function fixture() {
     new StreamMessageReader(output),
     new StreamMessageWriter(input),
   );
+  const opened: unknown[] = [];
+  client.onRequest("window/showDocument", (params) => {
+    opened.push(params);
+    return { success: true };
+  });
   client.listen();
   cleanups.push(async () => {
     client.dispose();
@@ -52,7 +57,10 @@ async function fixture() {
   });
   const initialized = await client.sendRequest("initialize", {
     processId: null,
-    capabilities: { workspace: { applyEdit: true } },
+    capabilities: {
+      workspace: { applyEdit: true },
+      window: { showDocument: { support: showDocument } },
+    },
   });
   await client.sendNotification("initialized", {});
   const auth = { Authorization: `Bearer ${server.apiToken}` };
@@ -99,11 +107,130 @@ async function fixture() {
     change,
     auth,
     revealed,
+    opened,
     initialized,
   };
 }
 
 describe("stdio LSP and secured live bridge", () => {
+  it("completes supported relationship names even while a type is being written", async () => {
+    const f = await fixture();
+    await f.open();
+    await f.change(
+      "version: v1\nnodes:\n  - full_text: Parent\n    connections:\n      - type: pre\n        full_text: Child\n",
+      2,
+    );
+    const completions = await f.client.sendRequest("textDocument/completion", {
+      textDocument: { uri },
+      position: { line: 4, character: 17 },
+    });
+    expect(completions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "precedes" }),
+        expect.objectContaining({ label: "prevents" }),
+        expect.objectContaining({ label: "map_link" }),
+      ]),
+    );
+  });
+
+  it("opens only a current attached external portal through the editor's opener", async () => {
+    const f = await fixture(true);
+    await f.open();
+    const linkedSource =
+      "version: v1\nnodes:\n  - id: external\n    type: external_link\n    url: ./readme.txt\n";
+    const snapshot = await f.change(linkedSource, 2);
+    const payload = {
+      uri,
+      key: snapshot.graph.nodes[0].key,
+      baseRevision: snapshot.revision,
+      attachmentId: snapshot.attachmentId,
+    };
+    expect(
+      (await f.post("/api/open-destination", payload)).response.status,
+    ).toBe(200);
+    expect(f.opened).toEqual([
+      { uri: "file:///synthetic/readme.txt", external: false, takeFocus: true },
+    ]);
+    expect(
+      (
+        await f.post("/api/open-destination", {
+          ...payload,
+          url: "file:///other",
+        })
+      ).response.status,
+    ).toBe(400);
+    expect(
+      (await f.post("/api/open-destination", { ...payload, baseRevision: 1 }))
+        .response.status,
+    ).toBe(409);
+    expect(
+      (
+        await f.post("/api/open-destination", {
+          ...payload,
+          attachmentId: "older",
+        })
+      ).response.status,
+    ).toBe(409);
+    expect(
+      (
+        await f.post("/api/open-destination", {
+          ...payload,
+          uri: "file:///unattached.lensmap",
+        })
+      ).response.status,
+    ).toBe(404);
+    const unsafe = await f.change(
+      linkedSource.replace("./readme.txt", "javascript:alert(1)"),
+      3,
+    );
+    expect(
+      (
+        await f.post("/api/open-destination", {
+          ...payload,
+          baseRevision: 3,
+          key: unsafe.graph.nodes[0].key,
+        })
+      ).response.status,
+    ).toBe(400);
+    expect(f.opened).toHaveLength(1);
+    for (const [index, url] of [
+      "https://example.org/\npath",
+      "https://example.org/#%ZZ",
+    ].entries()) {
+      const version = 4 + index;
+      const malformed = await f.change(
+        JSON.stringify({
+          version: "v1",
+          nodes: [{ type: "external_link", url }],
+        }),
+        version,
+      );
+      expect(
+        (
+          await f.post("/api/open-destination", {
+            ...payload,
+            key: malformed.graph.nodes[0].key,
+            baseRevision: version,
+          })
+        ).response.status,
+      ).toBe(400);
+    }
+    expect(f.opened).toHaveLength(1);
+    const limited = await fixture();
+    await limited.open();
+    const limitedSnapshot = await limited.change(linkedSource, 2);
+    expect(
+      (
+        await limited.post("/api/open-destination", {
+          uri,
+          key: limitedSnapshot.graph.nodes[0].key,
+          baseRevision: 2,
+          attachmentId: limitedSnapshot.attachmentId,
+        })
+      ).response.status,
+    ).toBe(501);
+  });
+
   it("uses live UTF-16 updates, current bindings and last-valid snapshots behind origin/auth checks", async () => {
     const f = await fixture();
     expect(f.initialized).toMatchObject({

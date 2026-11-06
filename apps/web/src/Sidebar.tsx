@@ -1,7 +1,10 @@
+import { connectionWording, thoughtAnchors } from "@lensmap/document";
 import Markdown from "react-markdown";
 import { type GraphData, type GraphNode, label } from "./graph";
 
 interface Props {
+  thoughtHref?: string;
+  onActivatePortal?: (node: GraphNode) => void;
   graph: GraphData;
   active?: GraphNode;
   onFocus: (key: string) => void;
@@ -17,9 +20,11 @@ interface Props {
 
 export default function Sidebar({
   graph,
+  thoughtHref,
   active,
   onFocus,
   onFragment,
+  onActivatePortal,
   source,
   applied,
   error,
@@ -66,6 +71,39 @@ export default function Sidebar({
           ) : (
             <p>No thought selected.</p>
           )}
+          {active && (
+            <a
+              href={
+                thoughtHref ??
+                `#${encodeURIComponent(thoughtAnchors(graph.nodes).get(active.key) ?? active.key)}`
+              }
+              onClick={(event) => {
+                event.preventDefault();
+                onFragment(
+                  encodeURIComponent(
+                    thoughtAnchors(graph.nodes).get(active.key) ?? active.key,
+                  ),
+                );
+              }}
+            >
+              Link to this thought
+            </a>
+          )}
+          {active?.destination && (
+            <div className="portal-actions">
+              <p>{active.destination.url}</p>
+              <button
+                type="button"
+                onClick={() => onActivatePortal?.(active)}
+                disabled={!onActivatePortal}
+              >
+                Open{" "}
+                {active.destination.kind === "map_link"
+                  ? "destination map"
+                  : "external link"}
+              </button>
+            </div>
+          )}
         </div>
       </details>
       <details className="sidebar-section outgoing" open>
@@ -80,7 +118,7 @@ export default function Sidebar({
                 onClick={() => onFocus(edge.to)}
               >
                 <span>
-                  {edge.kind === "cross" ? "┄➤" : "↳"} {label(target)}
+                  {connectionWording(edge.type, "outgoing")} · {label(target)}
                 </span>
                 <span aria-hidden="true">↗</span>
               </button>
@@ -88,6 +126,25 @@ export default function Sidebar({
           );
         })}
         {!outgoing.length && <p>No outgoing connections yet.</p>}
+      </details>
+      <details className="sidebar-section outgoing" open>
+        <summary>Incoming connections</summary>
+        {graph.edges
+          .filter((edge) => edge.to === active?.key)
+          .map((edge) => {
+            const origin = graph.nodes.find((node) => node.key === edge.from);
+            return (
+              origin && (
+                <button
+                  type="button"
+                  key={edge.key}
+                  onClick={() => onFocus(origin.key)}
+                >
+                  {connectionWording(edge.type, "incoming")} · {label(origin)}
+                </button>
+              )
+            );
+          })}
       </details>
       <details className="sidebar-section playground">
         <summary>YAML playground</summary>

@@ -284,7 +284,11 @@ nodes:
   ).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-edge]")).toHaveCount(3);
   await page.getByText("Selected thought", { exact: true }).click();
-  await page.getByRole("button", { name: "┄➤ New map", exact: true }).click();
+  await page
+    .getByText("Explicit connections", { exact: true })
+    .locator("..")
+    .getByRole("button", { name: "connected to · New map", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "New map", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -508,8 +512,8 @@ test("selection glow follows only immediate explicit connections", async ({
     if (path.connected) {
       expect(path.filter).not.toBe("none");
       if (path.kind === "cross") {
-        expect(path.dash).not.toBe("none");
-        expect(path.marker).toContain("arrow-");
+        expect(path.dash).toBe("none");
+        expect(path.marker).toBeNull();
       }
     } else expect(path.filter).toBe("none");
   }

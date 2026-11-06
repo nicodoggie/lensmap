@@ -1,3 +1,4 @@
+import type { ConnectionType, Thought } from "@lensmap/document";
 import type { Point } from "./lens";
 
 export const colours = {
@@ -16,12 +17,14 @@ export interface GraphNode extends Point {
   markdown: string;
   branch: Branch;
   unresolved: boolean;
+  destination?: Thought["destination"];
 }
 export interface GraphEdge {
   key: string;
   from: string;
   to: string;
   kind: "branch" | "cross";
+  type?: ConnectionType;
 }
 export interface GraphData {
   nodes: GraphNode[];

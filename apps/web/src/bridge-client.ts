@@ -20,7 +20,7 @@ export function connectBridge(
   let disposed = false;
   let events: EventSource | undefined;
   const token = new URLSearchParams(location.hash.slice(1)).get("token");
-  if (location.hash)
+  if (token)
     history.replaceState(null, "", location.pathname + location.search);
   const controller = new AbortController();
   const start = async () => {
@@ -77,5 +77,27 @@ export async function revealSource(uri: string, key: string): Promise<void> {
   if (!response.ok) {
     const result: { error?: string } = await response.json();
     throw new Error(result.error ?? "Source reveal failed.");
+  }
+}
+
+/** The server derives the URL from this revision-bound attached portal. */
+export async function openDestination(
+  snapshot: DocumentSnapshot,
+  key: string,
+): Promise<void> {
+  const response = await fetch("/api/open-destination", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      uri: snapshot.uri,
+      key,
+      baseRevision: snapshot.revision,
+      attachmentId: snapshot.attachmentId,
+    }),
+  });
+  if (!response.ok) {
+    const result: { error?: string } = await response.json();
+    throw Error(result.error ?? "Host destination opening failed.");
   }
 }

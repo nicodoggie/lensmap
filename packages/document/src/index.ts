@@ -2,15 +2,78 @@ import type { Node } from "yaml";
 import { isAlias, isMap, isScalar, parseDocument } from "yaml";
 import { z } from "zod";
 import {
+  type ConnectionType,
   DocumentSchema,
   type Connection as RawConnection,
 } from "./v1/schema.js";
 
-export type { LensmapDocument, Reference, RichNode } from "./v1/schema.js";
-export { DocumentSchema } from "./v1/schema.js";
+export type {
+  ConnectionType,
+  LensmapDocument,
+  Reference,
+  RichNode,
+} from "./v1/schema.js";
+export { ConnectionTypeSchema, DocumentSchema } from "./v1/schema.js";
 export function generateJSONSchema() {
   return z.toJSONSchema(DocumentSchema, { io: "input" });
 }
+/** Read the edge from the inspected endpoint, independently of structural kind. */
+export function connectionWording(
+  type: ConnectionType | undefined,
+  direction: "outgoing" | "incoming",
+): string {
+  switch (type) {
+    case "precedes":
+      return direction === "outgoing" ? "precedes" : "follows";
+    case "follows":
+      return direction === "outgoing" ? "follows" : "precedes";
+    case "prevents":
+      return direction === "outgoing" ? "prevents" : "is prevented by";
+    case "optional":
+      return "optionally connected to";
+    case "map_link":
+      return direction === "outgoing" ? "links to map" : "map linked from";
+    case "external_link":
+      return direction === "outgoing"
+        ? "links to resource"
+        : "resource linked from";
+    default:
+      return "connected to";
+  }
+}
+type AnchorThought = { readonly key: string; readonly id?: string };
+/** Generated spelling is private to this rendered document version. */
+export function thoughtAnchors(
+  nodes: readonly AnchorThought[],
+): Map<string, string> {
+  const reserved = new Set(
+    nodes.flatMap((node) => (node.id === undefined ? [] : [node.id])),
+  );
+  const anchors = new Map<string, string>();
+  for (const node of nodes) {
+    if (node.id !== undefined) {
+      anchors.set(node.key, node.id);
+      continue;
+    }
+    const base = `thought-${node.key}`;
+    let anchor = base;
+    let suffix = 0;
+    while (reserved.has(anchor)) anchor = `${base}-${++suffix}`;
+    reserved.add(anchor);
+    anchors.set(node.key, anchor);
+  }
+  return anchors;
+}
+/** The host decodes the fragment once before calling; authored names stay exact. */
+export function resolveThoughtAnchor(
+  nodes: readonly AnchorThought[],
+  decodedAnchor: string,
+): string | undefined {
+  for (const [key, anchor] of thoughtAnchors(nodes))
+    if (anchor === decodedAnchor) return key;
+  return undefined;
+}
+let attachmentSerial = 0;
 export type SourcePosition = { line: number; character: number };
 export type SourceRange = { start: SourcePosition; end: SourcePosition };
 export type SourceSpan = { start: number; end: number };
@@ -22,12 +85,14 @@ export type Thought = {
   unresolved: boolean;
   position?: { x: number; y: number };
   path: string;
+  destination?: { kind: "map_link" | "external_link"; url: string };
 };
 export type Connection = {
   key: string;
   from: string;
   to: string;
   kind: "branch" | "cross";
+  type?: ConnectionType;
   path: string;
 };
 export type SemanticGraph = { nodes: Thought[]; edges: Connection[] };
@@ -39,6 +104,7 @@ export type Binding = {
 };
 export type Diagnostic = { message: string; range: SourceRange };
 export type DocumentSnapshot = {
+  attachmentId?: string;
   uri: string;
   revision: number;
   analyzedRevision: number | null;
@@ -106,6 +172,7 @@ function rejectCycles(value: unknown, ancestors = new Set<object>()) {
 }
 type RecordNode = { thought: Thought; span: SourceSpan; ast: Node | undefined };
 export class DocumentSession {
+  private readonly attachmentId = `attachment:${++attachmentSerial}`;
   private text: string;
   private version: number;
   private state: DocumentSnapshot;
@@ -121,6 +188,7 @@ export class DocumentSession {
     this.version = revision;
     this.state = {
       uri,
+      attachmentId: this.attachmentId,
       revision,
       analyzedRevision: null,
       graphRevision: null,
@@ -175,13 +243,43 @@ export class DocumentSession {
       const input: unknown = doc.toJS();
       rejectCycles(input);
       const result = DocumentSchema.safeParse(input);
-      if (!result.success) throw new Error(z.prettifyError(result.error));
+      if (!result.success) {
+        // Union alternatives report their paths at the union boundary. Locate
+        // a concrete failing field in the source, not an unrelated line zero.
+        const leaves = (
+          issues: readonly z.core.$ZodIssue[],
+          prefix: PropertyKey[] = [],
+        ): z.core.$ZodIssue[] =>
+          issues.flatMap((issue) => {
+            const path = [...prefix, ...issue.path];
+            return issue.code === "invalid_union"
+              ? leaves(issue.errors.flat(), path)
+              : [{ ...issue, path }];
+          });
+        const located = leaves(result.error.issues)
+          .map((issue) => {
+            const path = issue.path.filter(
+              (part): part is string | number => typeof part !== "symbol",
+            );
+            if (issue.code === "unrecognized_keys" && issue.keys[0])
+              path.push(issue.keys[0]);
+            const ast = doc.getIn(path, true) as Node | undefined;
+            return { issue, path, offset: ast?.range?.[0] };
+          })
+          .filter((item) => item.offset !== undefined)
+          .sort((a, b) => b.path.length - a.path.length)[0];
+        throw Object.assign(
+          new Error(located?.issue.message ?? z.prettifyError(result.error)),
+          { offset: located?.offset ?? 0 },
+        );
+      }
       const records: RecordNode[] = [];
       const edges: Connection[] = [];
       const bindings: Binding[] = [];
       const refs: {
         from: string;
         id: string;
+        type?: ConnectionType;
         path: string;
         span: SourceSpan;
       }[] = [];
@@ -236,6 +334,7 @@ export class DocumentSession {
             refs.push({
               from: parent,
               id: entry.node_id,
+              type: entry.type,
               path: pathName,
               span,
             });
@@ -247,11 +346,20 @@ export class DocumentSession {
             : Array.isArray(entry)
               ? { full_text: null, connections: entry }
               : entry;
-        const markdown = content.full_text ?? content.summary ?? "";
+        const destination =
+          (content.type === "map_link" || content.type === "external_link") &&
+          content.url !== undefined
+            ? { kind: content.type, url: content.url }
+            : undefined;
+        const fallback =
+          content.summary === undefined && content.full_text === undefined
+            ? (destination?.url ?? "")
+            : "";
+        const markdown = content.full_text ?? content.summary ?? fallback;
         const title =
           content.summary !== undefined
             ? (content.summary ?? "")
-            : (content.full_text ?? "").split(/\r?\n/, 1)[0];
+            : (content.full_text ?? fallback).split(/\r?\n/, 1)[0];
         const key = `thought:${++this.serial}`;
         const thought: Thought = {
           key,
@@ -261,6 +369,7 @@ export class DocumentSession {
           unresolved: title.trim() === "",
           position: content.position,
           path: pathName,
+          ...(destination ? { destination } : {}),
         };
         records.push({ thought, span, ast });
         bindings.push({ key, kind: "definition", span });
@@ -275,6 +384,7 @@ export class DocumentSession {
             from: parent,
             to: key,
             kind: "branch",
+            ...(content.type !== undefined ? { type: content.type } : {}),
             path: pathName,
           });
         content.connections?.forEach((child, i) => {
@@ -347,7 +457,21 @@ export class DocumentSession {
       for (const ref of refs) {
         const to = ids.get(ref.id);
         if (!to)
-          throw new Error(`${ref.path}.node_id: no node has id "${ref.id}".`);
+          throw Object.assign(
+            new Error(`${ref.path}.node_id: no node has id "${ref.id}".`),
+            { offset: ref.span.start },
+          );
+        if (
+          (ref.type === "map_link" || ref.type === "external_link") &&
+          records.find((r) => r.thought.key === to)?.thought.destination
+            ?.kind !== ref.type
+        )
+          throw Object.assign(
+            new Error(
+              `${ref.path}.type: reference requires a ${ref.type} destination.`,
+            ),
+            { offset: ref.span.start },
+          );
         const endpoints = `${ref.from}:${to}`;
         const occurrence = parallelReferences.get(endpoints) ?? 0;
         parallelReferences.set(endpoints, occurrence + 1);
@@ -356,6 +480,7 @@ export class DocumentSession {
           from: ref.from,
           to,
           kind: "cross",
+          ...(ref.type !== undefined ? { type: ref.type } : {}),
           path: ref.path,
         });
         bindings.push({
@@ -369,6 +494,7 @@ export class DocumentSession {
       this.validSource = this.text;
       this.state = {
         uri: this.uri,
+        attachmentId: this.attachmentId,
         revision: this.version,
         analyzedRevision: this.version,
         graphRevision: this.version,

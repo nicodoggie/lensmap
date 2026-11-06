@@ -46,3 +46,29 @@ it("retains computed placement across prose edits, relayouts changed authored co
     layoutSemanticGraph(changed, { semantic: graph, layout: first }).nodes[1],
   ).toMatchObject({ x: 800, y: 400 });
 });
+
+it("retains portal and relationship metadata without relayout on metadata-only edits", () => {
+  const first = layoutSemanticGraph(graph);
+  const changed: SemanticGraph = {
+    ...graph,
+    nodes: graph.nodes.map((node) =>
+      node.key === "b"
+        ? {
+            ...node,
+            destination: { kind: "map_link", url: "other.lensmap#idea" },
+          }
+        : node,
+    ),
+    edges: graph.edges.map((edge) => ({ ...edge, type: "prevents" })),
+  };
+  const second = layoutSemanticGraph(changed, {
+    semantic: graph,
+    layout: first,
+  });
+  expect(second.nodes[1]).toMatchObject({
+    destination: { kind: "map_link", url: "other.lensmap#idea" },
+    x: first.nodes[1].x,
+    y: first.nodes[1].y,
+  });
+  expect(second.edges[0]).toMatchObject({ type: "prevents", kind: "branch" });
+});

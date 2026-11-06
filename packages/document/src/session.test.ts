@@ -1,6 +1,8 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: These fixtures require successful analysis and fail immediately otherwise. */
+
 import Ajv2020 from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import * as engine from "./index.js";
 import {
   DocumentSchema,
   DocumentSession,
@@ -203,4 +205,271 @@ it("accepts non-cyclic aliases without turning them into graph references", () =
   expect(() => s.prepareContentEdit(alias.key, { summary: "Changed" })).toThrow(
     "cannot be edited safely",
   );
+});
+
+describe("default connections", () => {
+  const analyze = (nodes: unknown[]) =>
+    new DocumentSession(
+      "test",
+      JSON.stringify({ version: "v1", nodes }),
+    ).snapshot();
+  it("normalizes flat types independently of structure and portal identity", () => {
+    const snapshot = analyze([
+      {
+        full_text: "A",
+        connections: [
+          { type: "prevents", full_text: "B", connections: ["C"] },
+          { type: "optional", summary: null, connections: ["D"] },
+          { id: "portal", type: "map_link", url: "next#target" },
+          { node_id: "portal" },
+          { type: "precedes", node_id: "portal" },
+          { type: "map_link", node_id: "portal" },
+        ],
+      },
+    ]);
+    expect(snapshot.valid).toBe(true);
+    const graph = snapshot.graph!;
+    expect(graph.edges.map((e) => e.type)).toEqual([
+      "prevents",
+      undefined,
+      "optional",
+      undefined,
+      "map_link",
+      undefined,
+      "precedes",
+      "map_link",
+    ]);
+    expect(graph.edges.slice(-3).every((e) => e.kind === "cross")).toBe(true);
+    expect(graph.nodes.find((n) => n.id === "portal")).toMatchObject({
+      title: "next#target",
+      destination: { kind: "map_link", url: "next#target" },
+    });
+    expect(graph.nodes.find((n) => n.unresolved)?.title).toBe("");
+  });
+  it("validates structural forms with native schema parity", () => {
+    const validate = new Ajv2020().compile(generateJSONSchema());
+    const cases: [unknown[], boolean][] = [
+      ...["connected", "precedes", "follows", "prevents", "optional"].map(
+        (type) =>
+          [
+            [{ full_text: "A", connections: [{ type, summary: "" }] }],
+            true,
+          ] as [unknown[], boolean],
+      ),
+      [[{ type: "map_link", url: "next" }], true],
+      [
+        [{ type: "external_link", url: "https://example.org", summary: null }],
+        true,
+      ],
+      ...[null, [], "Precedes", "unknown", " precedes"].map(
+        (type) =>
+          [
+            [{ full_text: "A", connections: [{ type, full_text: "B" }] }],
+            false,
+          ] as [unknown[], boolean],
+      ),
+      [[{ type: "precedes", full_text: "A" }], false],
+      [[{ type: "connected", full_text: "A" }], false],
+      [[{ type: "map_link", url: " " }], false],
+      [[{ type: "map_link", full_text: "A" }], false],
+      [[{ full_text: "A", url: "next" }], false],
+      [[{ full_text: "A", connections: [{ type: "optional" }] }], false],
+      [
+        [{ full_text: "A", connections: [{ node_id: "x", full_text: "B" }] }],
+        false,
+      ],
+      [
+        [
+          {
+            full_text: "A",
+            connections: [{ node_id: "x", url: "next", type: "map_link" }],
+          },
+        ],
+        false,
+      ],
+    ];
+    for (const [nodes, valid] of cases) {
+      const input = { version: "v1", nodes };
+      expect(
+        DocumentSchema.safeParse(input).success,
+        JSON.stringify(input),
+      ).toBe(valid);
+      expect(validate(input), JSON.stringify(input)).toBe(valid);
+    }
+  });
+  it("checks portal reference kinds without changing the last valid graph", () => {
+    for (const type of ["map_link", "external_link"]) {
+      expect(
+        analyze([
+          {
+            id: "x",
+            full_text: "ordinary",
+            connections: [{ type, node_id: "x" }],
+          },
+        ]).valid,
+      ).toBe(false);
+    }
+    expect(
+      analyze([
+        {
+          id: "x",
+          type: "map_link",
+          url: "next",
+          connections: [{ type: "external_link", node_id: "x" }],
+        },
+      ]).valid,
+    ).toBe(false);
+    expect(
+      analyze([
+        {
+          id: "x",
+          type: "external_link",
+          url: "next",
+          connections: [{ type: "external_link", node_id: "x" }],
+        },
+      ]).valid,
+    ).toBe(true);
+  });
+  it("retains bindings and edits portal prose without losing destination or edge type", () => {
+    const text =
+      "version: v1\nnodes:\n  - full_text: A\n    connections:\n      - id: p\n        type: map_link\n        url: next\n      - type: connected\n        node_id: p\n";
+    const session = new DocumentSession("test", text, 1);
+    expect(session.snapshot().valid).toBe(true);
+    const key = session.snapshot().graph!.nodes[1].key;
+    expect(
+      session.locate(offsetToPosition(text, text.indexOf("node_id: p"))),
+    ).toBe(key);
+    const edit = session.prepareContentEdit(key, { summary: "Portal" });
+    const updated = session.update(
+      edit.source.replace("url: next", "url: other"),
+      2,
+    );
+    expect(updated.valid).toBe(true);
+    expect(updated.graph!.nodes[1]).toMatchObject({
+      key,
+      title: "Portal",
+      destination: { kind: "map_link", url: "other" },
+    });
+    expect(updated.graph!.edges.map((e) => e.type)).toEqual([
+      "map_link",
+      "connected",
+    ]);
+    expect(
+      session.update(edit.source.replace("type: connected", "type: invalid"), 3)
+        .graph,
+    ).toEqual(updated.graph);
+  });
+});
+
+describe("connection navigation contracts", () => {
+  it("provides exact authored anchors and collision-free generated anchors", () => {
+    const nodes = [
+      { key: "a" },
+      { key: "b", id: "thought-a" },
+      { key: "c", id: " Exact / 名 " },
+      { key: "d" },
+    ];
+    const anchors = engine.thoughtAnchors(nodes);
+    expect(anchors.get("b")).toBe("thought-a");
+    expect(anchors.get("c")).toBe(" Exact / 名 ");
+    expect(new Set(anchors.values()).size).toBe(4);
+    expect(engine.thoughtAnchors(nodes)).toEqual(anchors);
+    for (const [key, anchor] of anchors)
+      expect(engine.resolveThoughtAnchor(nodes, anchor)).toBe(key);
+    expect(engine.resolveThoughtAnchor(nodes, "Exact / 名")).toBeUndefined();
+    expect(
+      engine.resolveThoughtAnchor(nodes, "%20Exact%20%2F%20名%20"),
+    ).toBeUndefined();
+    expect(engine.resolveThoughtAnchor(nodes, "missing")).toBeUndefined();
+  });
+  it("reads relationships from either endpoint", () => {
+    expect(engine.connectionWording(undefined, "incoming")).toBe(
+      "connected to",
+    );
+    expect(engine.connectionWording("connected", "outgoing")).toBe(
+      "connected to",
+    );
+    expect(engine.connectionWording("precedes", "incoming")).toBe("follows");
+    expect(engine.connectionWording("follows", "incoming")).toBe("precedes");
+    expect(engine.connectionWording("prevents", "incoming")).toBe(
+      "is prevented by",
+    );
+    expect(engine.connectionWording("prevents", "outgoing")).toBe("prevents");
+    for (const type of ["optional", "map_link", "external_link"] as const) {
+      expect(engine.connectionWording(type, "outgoing").length).toBeGreaterThan(
+        0,
+      );
+      expect(engine.connectionWording(type, "incoming").length).toBeGreaterThan(
+        0,
+      );
+    }
+  });
+  it("distinguishes reopened attachments and retains identity through updates", () => {
+    const a = new DocumentSession("same", source, 1);
+    const b = new DocumentSession("same", source, 1);
+    expect(a.snapshot().attachmentId).toBeTruthy();
+    expect(a.snapshot().attachmentId).not.toBe(b.snapshot().attachmentId);
+    expect(a.update(source, 2).attachmentId).toBe(a.snapshot().attachmentId);
+  });
+});
+
+describe("typed engine boundaries", () => {
+  it("locates nested schema errors while preserving the last valid graph", () => {
+    const session = new DocumentSession("test", source);
+    const before = session.snapshot().graph;
+    const invalid =
+      "version: v1\nnodes:\n  - full_text: Parent\n    connections:\n      - type: prevent\n        full_text: Child\n";
+    const snapshot = session.update(invalid, 2);
+    expect(snapshot.valid).toBe(false);
+    expect(snapshot.graph).toEqual(before);
+    expect(snapshot.diagnostics[0].range.start.line).toBe(4);
+    expect(snapshot.diagnostics[0].message).toContain("prevents");
+    const ambiguous = session.update(
+      invalid.replace("type: prevent", "node_id: alpha"),
+      3,
+    );
+    expect(ambiguous.valid).toBe(false);
+    expect(ambiguous.diagnostics[0].range.start.line).toBeGreaterThanOrEqual(4);
+  });
+  it("locates mismatched portal references at their source occurrence", () => {
+    const text =
+      "version: v1\nnodes:\n  - id: a\n    full_text: A\n    connections:\n      - type: map_link\n        node_id: a\n";
+    const snapshot = new DocumentSession("test", text).snapshot();
+    expect(snapshot.valid).toBe(false);
+    expect(snapshot.diagnostics[0].range.start.line).toBe(5);
+    expect(snapshot.diagnostics[0].message).toContain("map_link destination");
+  });
+  it("preserves explicit portal placeholders, distinct equal URLs, and parallel cycles", () => {
+    const nodes = [
+      {
+        id: "a",
+        type: "map_link",
+        url: "same",
+        summary: null,
+        connections: [
+          { type: "external_link", url: "same", full_text: "" },
+          { node_id: "a", type: "precedes" },
+          { node_id: "a", type: "follows" },
+          { node_id: "a", type: "precedes" },
+        ],
+      },
+    ];
+    const snapshot = new DocumentSession(
+      "test",
+      JSON.stringify({ version: "v1", nodes }),
+    ).snapshot();
+    expect(snapshot.valid).toBe(true);
+    expect(snapshot.graph!.nodes).toHaveLength(2);
+    expect(
+      snapshot.graph!.nodes.every((n) => n.title === "" && n.unresolved),
+    ).toBe(true);
+    expect(snapshot.graph!.nodes.map((n) => n.destination?.kind)).toEqual([
+      "map_link",
+      "external_link",
+    ]);
+    expect(new Set(snapshot.graph!.edges.map((e) => e.key)).size).toBe(4);
+    expect(snapshot.graph!.edges.slice(1).every((e) => e.from === e.to)).toBe(
+      true,
+    );
+  });
 });

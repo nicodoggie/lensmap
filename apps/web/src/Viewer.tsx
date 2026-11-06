@@ -1,10 +1,16 @@
 import {
+  connectionWording,
+  resolveThoughtAnchor,
+  thoughtAnchors,
+} from "@lensmap/document";
+import {
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
   useCallback,
   useEffect,
   useEffectEvent,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -13,6 +19,8 @@ import {
 import Markdown from "react-markdown";
 import ConnectionChooser from "./ConnectionChooser";
 import { limitMagnification } from "./clearance";
+import { connectionAppearance } from "./connection-appearance";
+import { edgeLanes } from "./edge-routing";
 import { colours, type GraphData, type GraphNode, label } from "./graph";
 import {
   type Camera,
@@ -37,7 +45,20 @@ import { reconcileViewer } from "./viewer-state";
 
 const initialCamera: Camera = { x: 0, y: 0, zoom: 0.85 };
 const nodeRadius = 43;
+export interface ViewerState {
+  selected: string;
+  camera: Camera;
+  strength: number;
+  overview: boolean;
+  inNeighbourhood: boolean;
+  neighbourhoodCamera: Camera;
+  neighbourhoodStrength: number;
+  returnOverview: boolean;
+}
+
 export interface ViewerSidebarContext {
+  thoughtHref?: string;
+  onActivatePortal?: (node: GraphNode) => void;
   graph: GraphData;
   active?: GraphNode;
   onFocus: (key: string) => void;
@@ -45,6 +66,12 @@ export interface ViewerSidebarContext {
 }
 
 export interface ViewerProps {
+  thoughtLink?: (anchor: string) => string;
+  onActivatePortal?: (node: GraphNode) => void;
+  initialState?: ViewerState;
+  initialTarget?: string;
+  initialOverview?: boolean;
+  onStateChange?: (state: ViewerState) => void;
   graph: GraphData;
   updateMode?: "replace" | "live";
   focusRequest?: { key: string; sequence: number };
@@ -55,12 +82,24 @@ export interface ViewerProps {
 
 export default function Viewer({
   graph,
+  thoughtLink,
+  onActivatePortal,
+  initialState,
+  initialTarget,
+  initialOverview,
+  onStateChange,
   updateMode = "live",
   focusRequest,
   onRevealSource,
   showInspector = true,
   renderSidebar,
 }: ViewerProps) {
+  const scope = useId();
+  const anchors = useMemo(() => thoughtAnchors(graph.nodes), [graph.nodes]);
+  const entryNode = graph.nodes.find((n) => n.key === initialTarget);
+  const restoredNode = graph.nodes.find(
+    (n) => n.key === initialState?.selected,
+  );
   const canvas = useRef<HTMLDivElement>(null);
   const scene = useRef<HTMLDivElement>(null);
   const pendingActivation = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,19 +121,35 @@ export default function Viewer({
   } | null>(null);
   const suppressPointerClick = useRef(false);
   const [size, setSize] = useState({ width: 900, height: 640 });
-  const [camera, setCamera] = useState(initialCamera);
+  const [camera, setCamera] = useState(
+    initialState?.camera ??
+      (entryNode
+        ? { ...initialCamera, x: entryNode.x, y: entryNode.y }
+        : initialCamera),
+  );
   const { nodes, edges } = graph;
-  const [selected, setSelected] = useState(nodes[0]?.key ?? "");
+  const lanes = useMemo(() => edgeLanes(edges), [edges]);
+  const [selected, setSelected] = useState(
+    restoredNode?.key ?? entryNode?.key ?? nodes[0]?.key ?? "",
+  );
   const [sidebarWidth, setSidebarWidth] = useState(340);
-  const [strength, setStrength] = useState(1.1);
-  const [neighbourhoodStrength, setNeighbourhoodStrength] = useState(1.1);
-  const [overview, setOverview] = useState(false);
-  const [inNeighbourhood, setInNeighbourhood] = useState(false);
-  const [neighbourhoodCamera, setNeighbourhoodCamera] = useState({
-    x: 0,
-    y: 0,
-    zoom: 1,
-  });
+  const [strength, setStrength] = useState(initialState?.strength ?? 1.1);
+  const [neighbourhoodStrength, setNeighbourhoodStrength] = useState(
+    initialState?.neighbourhoodStrength ?? 1.1,
+  );
+  const [overview, setOverview] = useState(
+    initialState?.overview ?? initialOverview ?? false,
+  );
+  const [inNeighbourhood, setInNeighbourhood] = useState(
+    !!restoredNode && (initialState?.inNeighbourhood ?? false),
+  );
+  const [neighbourhoodCamera, setNeighbourhoodCamera] = useState(
+    initialState?.neighbourhoodCamera ?? {
+      x: 0,
+      y: 0,
+      zoom: 1,
+    },
+  );
   const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState("");
   const [keyboardTarget, setKeyboardTarget] = useState<string>();
@@ -112,7 +167,31 @@ export default function Viewer({
     }
     setConnectionChoice(undefined);
   }, []);
-  const returnOverview = useRef(false);
+  const returnOverview = useRef(initialState?.returnOverview ?? false);
+  const reportState = useEffectEvent(() =>
+    onStateChange?.({
+      selected,
+      camera,
+      strength,
+      overview,
+      inNeighbourhood,
+      neighbourhoodCamera,
+      neighbourhoodStrength,
+      returnOverview: returnOverview.current,
+    }),
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Report when view values change, while the effect event keeps the host callback current.
+  useEffect(() => {
+    reportState();
+  }, [
+    selected,
+    camera,
+    strength,
+    overview,
+    inNeighbourhood,
+    neighbourhoodCamera,
+    neighbourhoodStrength,
+  ]);
   const keyboard = useMapKeyboard(canvas, {
     canPan: !overview,
     maximum: maximumPanSpeed,
@@ -125,7 +204,10 @@ export default function Viewer({
       if (target) focusNode(target.key);
     },
     onToggle: () => {
-      if (target) toggleNeighbourhood(target.key);
+      if (targetNode?.destination) {
+        dismissConnectionChoice();
+        onActivatePortal?.(targetNode);
+      } else if (target) toggleNeighbourhood(target.key);
     },
     onEscape: escapeNavigation,
   });
@@ -416,12 +498,10 @@ export default function Viewer({
       setMessage(`The fragment #${fragment} is not a valid URL fragment.`);
       return;
     }
-    const node = nodes.find((candidate) => candidate.id === id);
+    const key = resolveThoughtAnchor(nodes, id);
+    const node = nodes.find((candidate) => candidate.key === key);
     if (node) focusNode(node.key);
-    else
-      setMessage(
-        `No node has id "${id}". Section anchors are not implemented yet.`,
-      );
+    else setMessage(`No thought has anchor "${id}".`);
   }
 
   const previousGraph = useRef(graph);
@@ -626,7 +706,9 @@ export default function Viewer({
             aria-describedby="map-help"
             aria-activedescendant={
               keyboardActive && target
-                ? `${connectionChoice ? "connection-option" : "thought"}-${target.key}`
+                ? connectionChoice
+                  ? `connection-option-${target.key}`
+                  : `${scope}-thought-${target.key}`
                 : undefined
             }
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Arrow-key panning needs a focus target separate from node buttons.
@@ -745,13 +827,13 @@ export default function Viewer({
                 className="connections"
                 width={size.width}
                 height={size.height}
-                aria-hidden="true"
               >
+                <title>Explicit thought connections</title>
                 <defs>
                   {Object.entries(colours).map(([branch, colour]) => (
                     <marker
                       key={branch}
-                      id={`arrow-${branch}`}
+                      id={`${scope}-arrow-${branch}`}
                       viewBox="0 0 10 10"
                       refX="8"
                       refY="5"
@@ -767,6 +849,20 @@ export default function Viewer({
                       />
                     </marker>
                   ))}
+                  {Object.entries(colours).map(([branch, colour]) => (
+                    <marker
+                      key={`bar-${branch}`}
+                      id={`${scope}-bar-${branch}`}
+                      viewBox="0 0 10 10"
+                      refX="5"
+                      refY="5"
+                      markerWidth="8"
+                      markerHeight="8"
+                      orient="auto"
+                    >
+                      <path d="M 5 0 L 5 10" stroke={colour} strokeWidth="2" />
+                    </marker>
+                  ))}
                 </defs>
                 {local && (
                   <NeighbourhoodContinuations
@@ -776,12 +872,15 @@ export default function Viewer({
                     nodes={nodes}
                     nodeRadius={nodeRadius}
                     previewEdges={previewEdges}
+                    markerPrefix={scope}
                   />
                 )}
                 {drawnEdges.map((edge) => {
+                  const appearance = connectionAppearance(edge.type);
                   const from = positions.get(edge.from);
                   const to = positions.get(edge.to);
                   if (!from || !to) return null;
+                  const description = `${label(from.node)} ${connectionWording(edge.type, "outgoing")} ${label(to.node)}`;
                   const dx = to.x - from.x;
                   const dy = to.y - from.y;
                   const distance = Math.max(1, Math.hypot(dx, dy));
@@ -793,7 +892,13 @@ export default function Viewer({
                     x: to.x - (dx / distance) * (nodeRadius * to.scale + 7),
                     y: to.y - (dy / distance) * (nodeRadius * to.scale + 7),
                   };
-                  let bend = edge.kind === "cross" ? 42 : 0;
+                  const lane = lanes.get(edge.key);
+                  let bend =
+                    (lane?.count ?? 0) > 1
+                      ? (lane?.bend ?? 0)
+                      : edge.kind === "cross"
+                        ? 42
+                        : 0;
                   const centre = positions.get(selected);
                   if (local && !connectedEdges.has(edge.key) && centre) {
                     // Bow away from the centre on either side of the chord;
@@ -802,12 +907,14 @@ export default function Viewer({
                       (((start.x + end.x) / 2 - centre.x) * -dy +
                         ((start.y + end.y) / 2 - centre.y) * dx) /
                       distance;
-                    bend = side < 0 ? -190 : 190;
+                    bend =
+                      (side < 0 ? -1 : 1) * (190 + (lane?.index ?? 0) * 60);
                   }
                   const radius = nodeRadius * from.scale;
+                  const loop = radius * (3 + (lane?.index ?? 0));
                   const path =
                     edge.from === edge.to
-                      ? `M ${from.x + radius * 0.7} ${from.y - radius * 0.7} C ${from.x + radius * 3} ${from.y - radius * 3} ${from.x - radius * 3} ${from.y - radius * 3} ${from.x - radius * 0.7} ${from.y - radius * 0.7}`
+                      ? `M ${from.x + radius * 0.7} ${from.y - radius * 0.7} C ${from.x + loop} ${from.y - loop} ${from.x - loop} ${from.y - loop} ${from.x - radius * 0.7} ${from.y - radius * 0.7}`
                       : `M ${start.x} ${start.y} Q ${(start.x + end.x) / 2 - (dy / distance) * bend} ${(start.y + end.y) / 2 + (dx / distance) * bend} ${end.x} ${end.y}`;
                   return (
                     <g key={edge.key}>
@@ -819,16 +926,30 @@ export default function Viewer({
                           previewEdges.has(edge.key) ? "true" : undefined
                         }
                         data-kind={edge.kind}
+                        data-type={edge.type ?? "connected"}
+                        strokeDasharray={appearance.dashed ? "7 6" : undefined}
                         d={path}
                         stroke={colours[to.node.branch]}
                         style={{ color: colours[to.node.branch] }}
                         className={`edge ${edge.kind} ${connectedEdges.has(edge.key) ? "connected" : local ? "context" : ""} ${previewEdges.has(edge.key) ? "connection-preview" : ""}`}
+                        markerStart={
+                          appearance.start
+                            ? `url(#${scope}-${appearance.start}-${to.node.branch})`
+                            : undefined
+                        }
                         markerEnd={
-                          edge.kind === "cross"
-                            ? `url(#arrow-${to.node.branch})`
+                          appearance.end
+                            ? `url(#${scope}-${appearance.end}-${to.node.branch})`
                             : undefined
                         }
                       />
+                      <path
+                        className="edge-hit"
+                        d={path}
+                        data-edge-hit={edge.key}
+                      >
+                        <title>{description}</title>
+                      </path>
                     </g>
                   );
                 })}
@@ -840,7 +961,8 @@ export default function Viewer({
                   <button
                     type="button"
                     key={node.key}
-                    id={`thought-${node.key}`}
+                    id={`${scope}-thought-${node.key}`}
+                    data-anchor={anchors.get(node.key)}
                     className={`node ${selected === node.key ? "selected" : ""} ${connectedNodes.has(node.key) ? "connected" : ""} ${node.unresolved ? "unresolved" : ""}`}
                     data-node={node.key}
                     data-keyboard-target={
@@ -865,10 +987,46 @@ export default function Viewer({
                     onDoubleClick={() => {
                       const eligible = doubleCandidate.current === node.key;
                       cancelActivation();
-                      if (eligible) toggleNeighbourhood(node.key);
+                      if (node.destination) onActivatePortal?.(node);
+                      else if (eligible) toggleNeighbourhood(node.key);
                       else focusNode(node.key);
                     }}
                   >
+                    {node.destination && (
+                      <span
+                        role="img"
+                        className="destination-icon"
+                        data-destination={node.destination.kind}
+                        aria-label={
+                          node.destination.kind === "map_link"
+                            ? "Map portal"
+                            : "External link"
+                        }
+                      >
+                        {node.destination.kind === "map_link" ? (
+                          "🌀"
+                        ) : (
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M 14 3 H 21 V 10 M 21 3 L 10 14 M 10 5 H 4 V 21 H 20 V 14"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              fill="none"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                    )}
+                    <span
+                      className="thought-anchor"
+                      id={`${scope}-anchor-${encodeURIComponent(anchors.get(node.key) ?? node.key)}`}
+                      aria-hidden="true"
+                    />
                     <span>
                       {node.unresolved ? (
                         "?"
@@ -905,6 +1063,7 @@ export default function Viewer({
                 onAccept={() => {
                   if (pendingConnection) focusNode(pendingConnection.node.key);
                 }}
+                onActivatePortal={onActivatePortal}
                 onCancel={dismissConnectionChoice}
               />
             )}
@@ -953,8 +1112,8 @@ export default function Viewer({
               </p>
             )}
             <div className="legend">
-              <span>━ branch</span>
-              <span>┄➤ cross-link / cycle</span>
+              <span>━ connected</span>
+              <span>┄ optional · → sequence · ⊣ prevents</span>
             </div>
           </footer>
         </div>
@@ -970,6 +1129,10 @@ export default function Viewer({
             renderSidebar({
               graph,
               active,
+              thoughtHref: active
+                ? thoughtLink?.(anchors.get(active.key) ?? active.key)
+                : undefined,
+              onActivatePortal,
               onFocus: focusNode,
               onFragment: focusFragment,
             })
@@ -977,8 +1140,14 @@ export default function Viewer({
             <ViewerInspector
               graph={graph}
               active={active}
+              thoughtHref={
+                active
+                  ? thoughtLink?.(anchors.get(active.key) ?? active.key)
+                  : undefined
+              }
               onFocus={focusNode}
               onFragment={focusFragment}
+              onActivatePortal={onActivatePortal}
               onRevealSource={onRevealSource}
             />
           ))}

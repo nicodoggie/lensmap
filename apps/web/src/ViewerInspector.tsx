@@ -1,12 +1,15 @@
+import { connectionWording, thoughtAnchors } from "@lensmap/document";
 import Markdown from "react-markdown";
 import { label } from "./graph";
 import type { ViewerSidebarContext } from "./Viewer";
 
 export default function ViewerInspector({
   graph,
+  thoughtHref,
   active,
   onFocus,
   onFragment,
+  onActivatePortal,
   onRevealSource,
 }: ViewerSidebarContext & {
   onRevealSource?: (key: string) => void;
@@ -46,6 +49,39 @@ export default function ViewerInspector({
               Reveal source
             </button>
           )}
+          {active && (
+            <a
+              href={
+                thoughtHref ??
+                `#${encodeURIComponent(thoughtAnchors(graph.nodes).get(active.key) ?? active.key)}`
+              }
+              onClick={(event) => {
+                event.preventDefault();
+                onFragment(
+                  encodeURIComponent(
+                    thoughtAnchors(graph.nodes).get(active.key) ?? active.key,
+                  ),
+                );
+              }}
+            >
+              Link to this thought
+            </a>
+          )}
+          {active?.destination && (
+            <div className="portal-actions">
+              <p>{active.destination.url}</p>
+              <button
+                type="button"
+                onClick={() => onActivatePortal?.(active)}
+                disabled={!onActivatePortal}
+              >
+                Open{" "}
+                {active.destination.kind === "map_link"
+                  ? "destination map"
+                  : "external link"}
+              </button>
+            </div>
+          )}
         </div>
       </details>
       {(["outgoing", "incoming"] as const).map((direction) => {
@@ -73,7 +109,7 @@ export default function ViewerInspector({
                     key={edge.key}
                     onClick={() => onFocus(key)}
                   >
-                    {label(node)} · {edge.kind}
+                    {connectionWording(edge.type, direction)} · {label(node)}
                   </button>
                 )
               );

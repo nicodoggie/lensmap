@@ -1,5 +1,7 @@
+import { connectionWording } from "@lensmap/document";
 import { useId } from "react";
-import { colours, type GraphNode } from "./graph";
+import { connectionAppearance } from "./connection-appearance";
+import { colours, type GraphNode, label } from "./graph";
 import type { Point } from "./lens";
 import type { Continuation } from "./neighbourhood";
 
@@ -10,7 +12,9 @@ export default function NeighbourhoodContinuations({
   nodes,
   nodeRadius,
   previewEdges,
+  markerPrefix,
 }: {
+  markerPrefix: string;
   continuations: readonly Continuation[];
   positions: ReadonlyMap<string, Point & { scale: number }>;
   centreKey: string;
@@ -23,8 +27,9 @@ export default function NeighbourhoodContinuations({
   const byKey = new Map(nodes.map((node) => [node.key, node]));
   const segments = continuations.flatMap((continuation, index) => {
     const point = positions.get(continuation.at);
+    const source = byKey.get(continuation.edge.from);
     const target = byKey.get(continuation.edge.to);
-    if (!point || !origin || !target) return [];
+    if (!point || !origin || !source || !target) return [];
     const incoming = continuation.edge.to === continuation.at;
     const angle =
       Math.atan2(point.y - origin.y, point.x - origin.x) + continuation.offset;
@@ -44,6 +49,7 @@ export default function NeighbourhoodContinuations({
         near,
         far,
         target,
+        description: `${label(source)} ${connectionWording(continuation.edge.type, "outgoing")} ${label(target)}`,
         id: `${prefix}-${index}`,
         path: `M ${from.x} ${from.y} L ${to.x} ${to.y}`,
       },
@@ -76,24 +82,47 @@ export default function NeighbourhoodContinuations({
         ))}
       </defs>
       {segments.map((segment) => (
-        <path
-          key={segment.edge.key}
-          data-continuation={segment.edge.key}
-          data-connection-preview={
-            previewEdges.has(segment.edge.key) ? "true" : undefined
-          }
-          data-kind={segment.edge.kind}
-          data-direction={segment.incoming ? "incoming" : "outgoing"}
-          d={segment.path}
-          stroke={`url(#${segment.id})`}
-          style={{ color: colours[segment.target.branch] }}
-          className={`edge continuation ${segment.edge.kind} ${previewEdges.has(segment.edge.key) ? "connection-preview" : ""}`}
-          markerEnd={
-            segment.incoming && segment.edge.kind === "cross"
-              ? `url(#arrow-${segment.target.branch})`
-              : undefined
-          }
-        />
+        <g key={segment.edge.key}>
+          <path
+            data-continuation={segment.edge.key}
+            data-connection-preview={
+              previewEdges.has(segment.edge.key) ? "true" : undefined
+            }
+            data-kind={segment.edge.kind}
+            data-type={segment.edge.type ?? "connected"}
+            strokeDasharray={
+              connectionAppearance(segment.edge.type).dashed ? "7 6" : undefined
+            }
+            data-direction={segment.incoming ? "incoming" : "outgoing"}
+            d={segment.path}
+            stroke={`url(#${segment.id})`}
+            style={{ color: colours[segment.target.branch] }}
+            className={`edge continuation ${segment.edge.kind} ${previewEdges.has(segment.edge.key) ? "connection-preview" : ""}`}
+            markerStart={
+              connectionAppearance(
+                segment.edge.type,
+                segment.incoming ? "incoming" : "outgoing",
+              ).start
+                ? `url(#${markerPrefix}-arrow-${segment.target.branch})`
+                : undefined
+            }
+            markerEnd={
+              connectionAppearance(
+                segment.edge.type,
+                segment.incoming ? "incoming" : "outgoing",
+              ).end
+                ? `url(#${markerPrefix}-${connectionAppearance(segment.edge.type).end}-${segment.target.branch})`
+                : undefined
+            }
+          />
+          <path
+            className="edge-hit"
+            data-continuation-hit={segment.edge.key}
+            d={segment.path}
+          >
+            <title>{segment.description}</title>
+          </path>
+        </g>
       ))}
     </g>
   );
