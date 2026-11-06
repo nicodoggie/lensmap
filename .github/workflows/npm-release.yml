@@ -8,7 +8,15 @@ on:
         type: boolean
         default: false
       version:
-        description: Exact published version to promote (required only when Update latest is checked)
+        description: Exact version for promotion or server recovery
+        type: string
+        default: ""
+      resume_server:
+        description: Recover only the server from a verified tagged run; never republish the engine
+        type: boolean
+        default: false
+      verified_run:
+        description: Original tagged run ID for server recovery (requires version)
         type: string
         default: ""
   push:
@@ -23,7 +31,7 @@ concurrency:
 
 jobs:
   verify:
-    if: github.event_name != 'workflow_dispatch' || !inputs.update_latest
+    if: github.event_name != 'workflow_dispatch' || (!inputs.update_latest && !inputs.resume_server)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -71,7 +79,7 @@ jobs:
     if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     environment: npm
     permissions:
       contents: read
@@ -79,6 +87,9 @@ jobs:
     env:
       VERSION: ${{ needs.verify.outputs.version }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
@@ -91,12 +102,62 @@ jobs:
       - name: Publish document engine, then its dependent server
         run: |
           npm publish "artifacts/npm/lensmap-document-$VERSION.tgz" --access public --tag next --registry https://registry.npmjs.org/
-          npm view "@lensmap/document@$VERSION" version --registry https://registry.npmjs.org/
+          node scripts/npm-wait.ts "artifacts/npm/lensmap-document-$VERSION.tgz" --version "$VERSION"
           npm publish "artifacts/npm/lensmap-language-server-$VERSION.tgz" --access public --tag next --registry https://registry.npmjs.org/
-          npm view "@lensmap/language-server@$VERSION" version --registry https://registry.npmjs.org/
+          node scripts/npm-wait.ts "artifacts/npm/lensmap-language-server-$VERSION.tgz" --version "$VERSION"
+
+  resume-server:
+    if: github.event_name == 'workflow_dispatch' && inputs.resume_server
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      VERSION: ${{ inputs.version }}
+      VERIFIED_RUN: ${{ inputs.verified_run }}
+      UPDATE_LATEST: ${{ inputs.update_latest }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: npm install --global npm@11.21.0
+      - name: Require an original tagged run with successful package verification
+        run: |
+          test "$UPDATE_LATEST" = false
+          [[ "$VERIFIED_RUN" =~ ^[1-9][0-9]*$ ]]
+          test -n "$VERSION"
+          expected=$(gh api "repos/$GITHUB_REPOSITORY/commits/npm-v$VERSION" --jq .sha)
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VERIFIED_RUN" > original-run.json
+          jq -e --arg sha "$expected" --arg tag "npm-v$VERSION" \
+            '.event == "push" and .path == ".github/workflows/npm-release.yml" and .head_sha == $sha and .head_branch == $tag' original-run.json
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VERIFIED_RUN/jobs" --jq '.jobs[] | select(.name == "verify") | .conclusion')" = success
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-packages
+          path: artifacts/npm
+          run-id: ${{ inputs.verified_run }}
+          github-token: ${{ github.token }}
+      - name: Confirm the accepted engine and publish only the missing server
+        run: |
+          node scripts/npm-wait.ts "artifacts/npm/lensmap-document-$VERSION.tgz" --version "$VERSION"
+          if npm view "@lensmap/language-server@$VERSION" version --json --registry https://registry.npmjs.org/ --prefer-online > server-version.json; then
+            echo "Server already published; verify retained bytes without another publication."
+          else
+            jq -e '.error.code == "E404"' server-version.json
+            npm publish "artifacts/npm/lensmap-language-server-$VERSION.tgz" --access public --tag next --registry https://registry.npmjs.org/
+          fi
+          node scripts/npm-wait.ts "artifacts/npm/lensmap-language-server-$VERSION.tgz" --version "$VERSION"
 
   promote:
-    if: github.event_name == 'workflow_dispatch' && inputs.update_latest
+    if: github.event_name == 'workflow_dispatch' && inputs.update_latest && !inputs.resume_server
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: npm

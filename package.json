@@ -12,7 +12,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "check": "pnpm lint && pnpm test:release && tsc -p scripts/tsconfig.json && turbo run test typecheck build",
-    "test:release": "node --test scripts/npm-promote.test.ts",
+    "test:release": "node --test scripts/npm-promote.test.ts scripts/npm-wait.test.ts",
     "pack:packages": "node scripts/npm-packages.ts",
     "test:packages": "node scripts/npm-packages.ts --test",
     "pack:zed": "node scripts/zed-release.ts",

@@ -59,7 +59,10 @@ command alone.
   without rebuilding, then publishes **document first, then language-server**,
   explicitly public and with **next**. Normal subsequent releases do not move
   `latest`; the initial release's existing `latest` tag is retained.
-- **Run workflow, Update latest unchecked:** performs the same verification and
+- After each accepted publish, read-only readiness checks tolerate npm's
+  processing delay and require the registry integrity to match the verified
+  tarball. They retry missing-version reads, never the publication itself.
+- **Run workflow, neither promotion nor server recovery selected:** performs the same verification and
   retains tarballs, but never publishes or changes tags. The checkbox defaults
   to off; the version input is ignored in this mode.
 - **Run workflow, Update latest checked:** enter an exact already-published
@@ -146,6 +149,30 @@ publishing the **same verified server tarball** after approval; blindly rerunnin
 the complete publish job will encounter the immutable already-published engine
 version. Do not silently skip duplicate versions or publish rebuilt bytes under
 an existing version.
+
+### Server-only recovery
+
+If the engine publish was accepted but the workflow stopped **before attempting
+the server**, run the current workflow from `main` with `resume_server=true`,
+`update_latest=false`, the exact `version`, and the original tagged
+`verified_run` ID. The run must belong to this release workflow, match the
+`npm-v<version>` tag's source commit, and contain a successful `verify` job.
+
+Recovery downloads that run's retained `npm-packages` artifact without rebuilding.
+It first confirms the engine's registry integrity against its retained tarball;
+it never republishes the engine. It publishes only the missing server, then waits
+for matching registry integrity. An already-visible server is verified against
+the same tarball instead of being published again. Other registry errors fail
+without a write. Promotion is a subsequent, separate operation.
+
+Do not start or repeat recovery merely because an accepted server publish is
+still processing. Reconcile the prior operation and wait for visibility first.
+An expired/missing CI artifact is a blocker, not permission to rebuild an
+immutable version. Local readiness inspection is read-only:
+
+```sh
+node scripts/npm-wait.ts PATH_TO_VERIFIED_TARBALL --version 0.1.1
+```
 
 ## Consumption after publication
 
