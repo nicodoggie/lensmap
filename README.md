@@ -41,6 +41,15 @@ pnpm dev
 
 Open **<http://127.0.0.1:5173>**. The dev server binds to loopback by default. If that port is occupied, Vite prints the selected port.
 
+For the linked examples, open
+**<http://127.0.0.1:5173/?map=/linked-maps.lensmap>** (adjust the port if needed).
+The dev runner serves `examples/` at the URL root, so `/quickstart.lensmap` and
+`/night-ferry.lensmap` are also available. Loading a map this way establishes its
+source URL; its existing relative portals work without pasting YAML. A
+locationless development draft can also use explicit `/…` map addresses against
+the dev origin, but `./…` still needs a source map. This convenience is absent
+from production builds and `pnpm preview`; no examples are copied into the build.
+
 After adding/removing dependencies, a long-running Vite process can retain obsolete optimizer metadata. If the page is blank with **504 Outdated Optimize Dep**, stop the Lensmap dev process and restart using the native optimizer rebuild: `pnpm --filter @lensmap/web dev --force --host 127.0.0.1 --port 5173 --strictPort`. Then reload the page. Do not restore retired packages or clear browser account data to repair a stale server optimizer. A successful production build or source-module HTTP response does not prove that the running dev page's optimized imports load.
 
 - Drag the map background **or a thought** to pan. A short click selects; movement past a small threshold pans without activating the thought. Arrow keys pan when the map has focus.
@@ -64,6 +73,11 @@ After adding/removing dependencies, a long-running Vite process can retain obsol
 - Positions and authored IDs are optional. Missing positions receive a subtree-aware radial layout: padded branch contours reserve angular room in source order, rather than giving every subtree an equal fan. Branches widen their outward fan before locally lengthening links when needed. Explicit coordinates stay exact; cross-links/cycles do not reparent nodes. **Load sample** replaces the draft only; Apply still controls the map.
 - Collapse **Selected thought**, **Explicit connections** and **YAML playground** independently. Drag the divider to resize the desktop sidebar, or focus it and use Left/Right/Home/End. On mobile the sidebar stacks below the map.
 - Drafts survive view/selection and cross-map Back/Forward changes, but **reloading discards edits**. Cross-map history restores view state, not source snapshots over newer work. There is no durable saving yet.
+
+The standalone toolbar includes **Back** and **Forward** for map visits, separate
+from the browser's controls. They restore the retained map, view and draft without
+invoking browser Back/Forward. Browser navigation remains supported too, including
+when viewer navigation takes a different branch; returning is not source undo.
 
 Lens placement and desired circle size share one nonlinear spatial falloff, with no extra logarithmic distance warp. A clearance limit then reduces crowded circles, favouring more central circles, **without moving their centres or changing the radial layout**. This happens before uniform manual zoom; edge endpoints follow the actual limited circles. Below normal lens strength the correction blends in continuously, and Overview/zero strength remain undistorted. Very dense or coincident authored positions retain small context dots rather than gaining an impossible universal separation guarantee. This is not a full-content view; complete notes remain in the sidebar.
 

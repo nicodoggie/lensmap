@@ -185,6 +185,14 @@ The author explicitly chooses `map_link` versus `external_link`; do not infer de
 
 Relative addresses resolve against the containing source map's resource location, not the viewer application's page/loopback URL. Keep the raw authored address unchanged while computing its resolved resource locator. A raw playground draft with no source location cannot resolve relative resources: explain the missing base rather than guessing a checkout path or treating the app's origin as the map location.
 
+The **development runner only** provides an explicit root-URL convenience:
+`pnpm dev` serves the repository's `examples/` at the dev origin's root, and
+`/?map=/linked-maps.lensmap` loads a URL-backed example. A locationless dev draft
+may resolve an explicit `/…` map address against that origin; ordinary `./…`
+addresses still require a source location. A real source map's base always wins.
+This opt-in does not apply to production builds, preview or the IDE bridge, and
+does not copy examples into built assets or introduce a filesystem API.
+
 ### Standalone browser
 
 Load web-hosted maps through ordinary browser HTTP(S) access, including its origin, CORS and authentication constraints. Do not add a proxy to bypass those constraints or introduce new credential setup in this feature.
@@ -227,7 +235,13 @@ The host must resolve a thought fragment into viewer selection/centring, not rel
 
 Successful cross-map navigation preserves a way back. Restore the prior map's view mode, camera, zoom, selected thought and lens settings, including relevant temporary-view state when its thoughts still exist. Ordinary panning and zooming do not create map-navigation history steps.
 
-Use browser Back/Forward in a standalone host where supported, or at least a viewer-owned Back action in an embedding. Cooperate with host history rather than commandeering it. Returning restores recorded view state, not the new-navigation Overview/Lens defaults.
+Both standalone and embedded viewers expose a visible, keyboard-accessible
+**Back** action, with **Forward** when a retained forward visit exists. These are
+map-owned controls, not a requirement to use the browser's traversal commands.
+Standalone browser Back/Forward also remain supported; cooperate with host
+history rather than commandeering it. Browser visits must retain their actual map
+identity when viewer navigation branches and reuses a stack position. Returning
+restores recorded view state, not the new-navigation Overview/Lens defaults.
 
 Do not discard unapplied playground drafts or replace an authoritative editor buffer. View history is not source undo: returning must not overwrite newer source with an old snapshot. If live source changed, use current valid analysis and restore surviving view targets; make a removed target unavailable rather than assigning its identity to another thought. Internal keys are attachment-local: detach/reopen must invalidate stale internal-key selections, even when a new attachment reuses the same resource URI, revision number or key spelling. An authored ID may resolve again in the new analysis, but a coincident internal key is not identity evidence. This is in-session work preservation, not a new durable-saving promise.
 

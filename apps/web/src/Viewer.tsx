@@ -66,6 +66,7 @@ export interface ViewerSidebarContext {
 }
 
 export interface ViewerProps {
+  navigationControls?: ReactNode;
   thoughtLink?: (anchor: string) => string;
   onActivatePortal?: (node: GraphNode) => void;
   initialState?: ViewerState;
@@ -82,6 +83,7 @@ export interface ViewerProps {
 
 export default function Viewer({
   graph,
+  navigationControls,
   thoughtLink,
   onActivatePortal,
   initialState,
@@ -607,6 +609,7 @@ export default function Viewer({
       >
         <div className="map-column">
           <div className="toolbar">
+            {navigationControls}
             <fieldset className="segmented">
               <legend className="sr-only">Map view</legend>
               <button

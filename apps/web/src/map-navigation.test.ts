@@ -61,6 +61,57 @@ describe("map navigation", () => {
   ])("rejects unsafe, locationless or malformed address %s", (raw) => {
     expect(() => address(raw)).toThrow();
   });
+  it("opts a locationless draft into root URLs without overriding a source base", async () => {
+    const origin = "http://127.0.0.1:5173";
+    const loaded: string[] = [];
+    const loader = async (uri: string) => {
+      loaded.push(uri);
+      return entry(uri);
+    };
+    const n = new Navigation(entry(""), () => {});
+    expect(await n.go("/quickstart.lensmap#a", loader)).toBe(false);
+    expect(n.error).toContain("no source base");
+    expect(loaded).toEqual([]);
+    expect(await n.go("/quickstart.lensmap#a", loader, undefined, origin)).toBe(
+      true,
+    );
+    expect(loaded).toEqual([`${origin}/quickstart.lensmap`]);
+    expect(n.current.target).toBe("one");
+    expect(n.current.overview).toBe(false);
+
+    const hosted = new Navigation(
+      entry("https://maps.example.org/notes/a"),
+      () => {},
+    );
+    await hosted.go("/b", loader, undefined, origin);
+    expect(hosted.current.uri).toBe("https://maps.example.org/b");
+  });
+  it.each([
+    "./quickstart.lensmap",
+    "//maps.example.org/a",
+    "/\\maps.example.org/a",
+    "/bad\npath",
+    "/a#%ZZ",
+  ])(
+    "does not reinterpret unsupported development root address %s",
+    async (raw) => {
+      const n = new Navigation(entry(""), () => {});
+      let calls = 0;
+      const committed = await n.go(
+        raw,
+        async (uri) => {
+          calls++;
+          return entry(uri);
+        },
+        undefined,
+        "http://127.0.0.1:5173",
+      );
+      expect(committed).toBe(false);
+      expect(calls).toBe(0);
+      expect(n.current.uri).toBe("");
+      expect(n.error).not.toBe("");
+    },
+  );
   it("commits only the newest request even if the old loader ignores cancellation", async () => {
     let finish!: (value: MapEntry) => void;
     const n = new Navigation(entry(), () => {});
@@ -136,6 +187,31 @@ describe("map navigation", () => {
     expect(n.current.view).toEqual(view);
     expect(n.current.draft).toBe("unapplied");
     expect(n.current.source).toBe("new source");
+  });
+  it("restores an archived visit after its stack position was replaced by a new branch", async () => {
+    const n = new Navigation(entry(), () => {});
+    await n.go("https://example.org/b", async (uri) => entry(uri));
+    const archived = n.current;
+    archived.view = view;
+    archived.source = "old B source";
+    await n.go("https://example.org/a", async (uri) => entry(uri), 0);
+    await n.go("https://example.org/c", async (uri) => entry(uri));
+    expect(n.entries[1].uri).toBe("https://example.org/c");
+    expect(
+      await n.go(
+        archived.uri,
+        async (uri) => ({
+          ...entry(uri),
+          source: "current B",
+          draft: "B draft",
+        }),
+        archived,
+      ),
+    ).toBe(true);
+    expect(n.current.uri).toBe(archived.uri);
+    expect(n.current.view).toEqual(view);
+    expect(n.current.source).toBe("current B");
+    expect(n.current.draft).toBe("B draft");
   });
   it("reopen rejects coincident internal keys but re-resolves authored IDs", () => {
     const anonymous = {

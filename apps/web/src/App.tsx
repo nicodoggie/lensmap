@@ -1,7 +1,12 @@
 import { thoughtAnchors } from "@lensmap/document";
 import { useEffect, useRef, useState } from "react";
 import { parseSource } from "./document/parse";
-import { address, type MapLoader, thoughtURL } from "./map-navigation";
+import {
+  address,
+  type MapEntry,
+  type MapLoader,
+  thoughtURL,
+} from "./map-navigation";
 import Sidebar from "./Sidebar";
 import sampleSource from "./sample.yaml?raw";
 import { NavigationNotice, useMapNavigation } from "./use-map-navigation";
@@ -24,6 +29,7 @@ export default function App() {
   const [, refresh] = useState(0);
   const maps = useRef(new Map<string, typeof entry>());
   const aliases = useRef(new Map<string, string>());
+  const visits = useRef(new Map<string, { index: number; entry: MapEntry }>());
   maps.current.set(entry.uri, entry);
   const loader: MapLoader = async (uri, signal) => {
     const canonical = aliases.current.get(uri) ?? uri;
@@ -70,22 +76,47 @@ export default function App() {
     url.hash = "";
     return url;
   };
-  const go = async (raw: string, index?: number) => {
+  const rememberVisit = (replace = false) => {
+    const existing = replace
+      ? (history.state as { lensmapVisit?: string } | null)?.lensmapVisit
+      : undefined;
+    const lensmapVisit =
+      existing && visits.current.has(existing) ? existing : crypto.randomUUID();
+    visits.current.set(lensmapVisit, {
+      index: navigation.index,
+      entry: navigation.current,
+    });
+    return { lensmapVisit };
+  };
+  const go = async (
+    raw: string,
+    restore?: number | MapEntry,
+    fromBrowser = false,
+  ) => {
     const oldIndex = navigation.index;
-    const committed = await navigation.go(raw, loader, index);
+    const committed = await navigation.go(
+      raw,
+      loader,
+      restore,
+      import.meta.env.DEV ? location.origin : undefined,
+    );
     if (committed) {
       setError("");
       setStatus("");
-    }
-    if (committed && index === undefined) {
       const method =
-        navigation.index === oldIndex ? "replaceState" : "pushState";
-      history[method]({ lensmapIndex: navigation.index }, "", route());
+        restore !== undefined || navigation.index === oldIndex
+          ? "replaceState"
+          : "pushState";
+      history[method](
+        rememberVisit(method === "replaceState"),
+        "",
+        fromBrowser ? location.href : route(),
+      );
     }
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: One session listener reads the stable mutable navigation object.
   useEffect(() => {
-    history.replaceState({ lensmapIndex: 0 }, "", location.href);
+    history.replaceState(rememberVisit(true), "", location.href);
     const requested = new URL(location.href).searchParams.get("map");
     if (requested || location.hash) {
       const raw = location.hash
@@ -94,10 +125,18 @@ export default function App() {
       if (raw) void go(raw, 0);
     }
     const pop = (event: PopStateEvent) => {
-      const index = (event.state as { lensmapIndex?: number } | null)
-        ?.lensmapIndex;
-      if (index !== undefined && navigation.entries[index])
-        void go(navigation.entries[index].uri, index);
+      const id = (event.state as { lensmapVisit?: string } | null)
+        ?.lensmapVisit;
+      const visit = id ? visits.current.get(id) : undefined;
+      if (visit) {
+        // Viewer Back can take a different branch from browser history. Retain
+        // the actual visit, not an array index that a later map can reuse.
+        const restore =
+          navigation.entries[visit.index] === visit.entry
+            ? visit.index
+            : visit.entry;
+        void go(visit.entry.uri, restore, true);
+      }
     };
     window.addEventListener("popstate", pop);
     const hash = () => {
@@ -122,6 +161,30 @@ export default function App() {
       <Viewer
         key={navigation.serial}
         graph={entry.graph}
+        navigationControls={
+          <nav className="segmented" aria-label="Map navigation">
+            <button
+              type="button"
+              disabled={navigation.index === 0}
+              onClick={() => {
+                const index = navigation.index - 1;
+                void go(navigation.entries[index].uri, index);
+              }}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              disabled={navigation.index >= navigation.entries.length - 1}
+              onClick={() => {
+                const index = navigation.index + 1;
+                void go(navigation.entries[index].uri, index);
+              }}
+            >
+              Forward
+            </button>
+          </nav>
+        }
         thoughtLink={(anchor) => thoughtURL(location.href, entry.uri, anchor)}
         updateMode="replace"
         initialState={entry.view}

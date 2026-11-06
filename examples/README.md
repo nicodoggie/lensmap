@@ -20,6 +20,20 @@ None of the samples requires authored positions. The existing positioned compari
 remains at `apps/web/examples/night-ferry-positioned.yaml`; the playground's
 input remains at `apps/web/src/sample.yaml`.
 
+## Development playground
+
+Run `pnpm dev` from the repository root and open
+<http://127.0.0.1:5173/?map=/linked-maps.lensmap>. Use Vite's printed port if it
+differs. The dev server serves these files at root URLs; the notebook's relative
+portals can then load both other examples without any Zed attachment requirement.
+The viewer's **Back** and **Forward** controls restore map visits and their views
+without invoking browser traversal. Browser Back/Forward also remain available.
+
+In a pasted development draft, `/quickstart.lensmap` is an explicit root URL and
+can use the dev origin. Pasting `./quickstart.lensmap` still has no source base.
+This is a development-only convenience, not local filesystem access; production
+builds and preview do not include or serve this example directory.
+
 ## Try links between maps
 
 1. Open `linked-maps.lensmap`, `quickstart.lensmap` and `night-ferry.lensmap` in

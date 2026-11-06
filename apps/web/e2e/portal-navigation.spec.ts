@@ -80,7 +80,7 @@ test("applying a new draft supersedes an earlier pending destination load", asyn
   ).toHaveCount(0);
 });
 
-test("missing target retains draft; fallback opens Overview and browser history restores work", async ({
+test("missing target retains draft; fallback opens Overview and map controls restore work", async ({
   page,
 }) => {
   await page.route("**/maps/a.lensmap", (route) =>
@@ -133,7 +133,15 @@ test("missing target retains draft; fallback opens Overview and browser history 
   await expect(
     page.getByRole("button", { name: "Destination", exact: true }),
   ).toBeVisible();
-  await page.goBack();
+  // Map-owned controls must work even without the browser traversal commands.
+  await page.evaluate(() => {
+    for (const method of ["back", "forward", "go"] as const)
+      history[method] = () => {
+        throw Error("The map controls must not invoke browser traversal.");
+      };
+  });
+  const controls = page.getByRole("navigation", { name: "Map navigation" });
+  await controls.getByRole("button", { name: "Back", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Start", exact: true }),
   ).toBeVisible();
@@ -148,7 +156,7 @@ test("missing target retains draft; fallback opens Overview and browser history 
   await expect.poll(geometry).toEqual(savedGeometry);
   await page.getByText("YAML playground", { exact: true }).click();
   await expect(draft).toHaveValue(`${a}# unapplied work\n`);
-  await page.goForward();
+  await controls.getByRole("button", { name: "Forward", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Destination", exact: true }),
   ).toBeVisible();

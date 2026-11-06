@@ -106,17 +106,34 @@ export class Navigation {
     this.controller = new AbortController();
     return loader(uri, this.controller.signal);
   }
-  async go(raw: string, loader: MapLoader, historyIndex?: number) {
+  async go(
+    raw: string,
+    loader: MapLoader,
+    history?: number | MapEntry,
+    rootBase?: string,
+  ) {
     const ticket = ++this.request;
     let committed = false;
     this.error = "";
     this.fallback = undefined;
     try {
+      const historyIndex = typeof history === "number" ? history : undefined;
+      const previous =
+        typeof history === "object"
+          ? history
+          : historyIndex !== undefined
+            ? this.entries[historyIndex]
+            : undefined;
+      // A host may opt a locationless draft into root paths, never bare paths
+      // or authority-relative URLs. An actual source location always wins.
+      const base =
+        this.current.uri ||
+        (raw.startsWith("/") && !/^[/\\]{2}/.test(raw) ? rootBase : undefined);
       const { uri, fragment } = raw.startsWith("#")
         ? { uri: this.current.uri, fragment: decodeURIComponent(raw.slice(1)) }
-        : historyIndex !== undefined && !raw
+        : history !== undefined && !raw
           ? { uri: "", fragment: "" }
-          : address(raw, this.current.uri);
+          : address(raw, base);
       const loaded = await this.load(uri, loader);
       if (ticket !== this.request) return false;
       const target = fragment
@@ -132,19 +149,20 @@ export class Navigation {
         target,
         overview: !fragment,
       };
-      if (historyIndex !== undefined) {
-        const old = this.entries[historyIndex];
-        const sameResource = old.uri === loaded.uri;
+      if (previous) {
+        const sameResource = previous.uri === loaded.uri;
         const view = sameResource
-          ? restoreView(old, loaded, old.view)
+          ? restoreView(previous, loaded, previous.view)
           : undefined;
-        if (sameResource && old.view && !view)
+        if (sameResource && previous.view && !view)
           this.error = "Previous view target is removed or unavailable.";
         next = {
           ...next,
-          draft: loaded.draft ?? (sameResource ? old.draft : undefined),
+          draft: loaded.draft ?? (sameResource ? previous.draft : undefined),
           view,
         };
+      }
+      if (historyIndex !== undefined) {
         this.entries[historyIndex] = next;
         this.index = historyIndex;
       } else if (loaded.uri === this.current.uri) {
