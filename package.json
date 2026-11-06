@@ -14,6 +14,8 @@
     "check": "pnpm lint && tsc -p scripts/tsconfig.json && turbo run test typecheck build",
     "pack:packages": "node scripts/npm-packages.ts",
     "test:packages": "node scripts/npm-packages.ts --test",
+    "pack:zed": "node scripts/zed-release.ts",
+    "test:zed-package": "node scripts/zed-release.ts --test",
     "test:e2e": "pnpm build && playwright test --config apps/web/playwright.config.ts",
     "schema:export": "pnpm --filter @lensmap/document build && node packages/document/dist/export-schema.js schemas/lensmap.experimental-v1.schema.json"
   },

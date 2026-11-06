@@ -8,6 +8,50 @@ Live setup: Node `v24.16.0`, pnpm `12.15.0`. Pinned workspace tools/dependencies
 
 This is a fresh TypeScript lens experiment. The pruned scratch file was not moved or restored; historical render activity was located but final file-byte equivalence was not established.
 
+## Zed extension release preparation (2026-11-06)
+
+- The approved npm checkpoint `3d30e14` was pushed and read back from GitHub
+  `main` at the same full SHA before continuing. npm trust/account setup and
+  publication were left deferred.
+- Three focused Rust tests passed after an initial missing-implementation RED:
+  explicit binary override precedence and path/args/env preservation; absent or
+  different pinned npm versions requiring installation while exact caches skip
+  it and errors propagate; supported versus too-old/malformed Node versions.
+  Cargo fmt, locked tests, clippy with warnings denied, script TypeScript/Biome,
+  both workflow files' actionlint and diff whitespace checks passed.
+- `pnpm test:zed-package --tag zed-v0.1.0` built the real preview2 component,
+  packaged it with its source/license/runtime pin, safely extracted it outside
+  the checkout, rebuilt that extracted source and verified `SHA256SUMS`.
+  The first native extraction exposed an absolute license symlink created by
+  the copier; the package now dereferences that source symlink into license
+  bytes. A raw preview1 Cargo module also failed the installed Zed component
+  loader. The release builder now uses `wasm32-wasip2`, matching Zed 1.27's
+  source-traced builder, rather than claiming any successful Wasm build is enough.
+- The artifact's actual component loaded in isolated **Zed 1.27.0 / Linux X11**
+  with Node **24.22.1**, no `lsp.lensmap.binary`, and the real production tarballs
+  installed into its extension-owned cache. A transparent Node relay forwarded
+  actual editor/server traffic and injected only session discovery; no server
+  capability/source/graph replies were fabricated. Native typing changed the
+  analyzed title to **Cached runtime edited** at revision **7**, while the saved
+  fixture remained unchanged. Bundled preview HTML returned **HTTP 200**.
+- Native acceptance also exposed the required fixed-argument Node process
+  capability. The manifest now declares only `--version` for a variable,
+  host-selected executable path, and npm installation of the specific server
+  package. The disposable fixture initially retained an older cached extension
+  manifest; removing only that owned index forced Zed to read the actual updated
+  manifest. This was a probe cache repair, not a production permission bypass.
+- The native screenshot was inspected: edited source, unsaved-tab indicator and
+  YAML language association were visible. Owned Xvfb/Zed groups were enclosed by
+  a bounded transient service. Readback confirmed the service inactive, owned
+  LSP PID gone and HTTP endpoint closed. The live user editor/settings were not
+  changed. Private discovery credentials remain outside the repository.
+- This is **cached-runtime native proof**, not a fresh Zed npm download. The
+  tagged release branch requires the exact published runtime to install and
+  pass the existing browser bridge suite before it may create a draft release;
+  that registry/publication branch remains unexercised until npm publication.
+  No npm publication, release tag, GitHub release, trust configuration or
+  upstream Zed registry submission was performed. See [Zed releases](zed-release.md).
+
 ## npm package preparation (2026-11-06)
 
 - The checkout remained `/home/ensu/Projects/lensmap`, `main`, initially clean at

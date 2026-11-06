@@ -1,0 +1,82 @@
+name: Zed extension release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["zed-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zed-release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint && pnpm exec tsc -p scripts/tsconfig.json
+      - run: rustup target add wasm32-wasip2
+      - run: cargo fmt --manifest-path editors/zed/Cargo.toml --check
+      - run: cargo test --locked --manifest-path editors/zed/Cargo.toml
+      - run: cargo clippy --locked --manifest-path editors/zed/Cargo.toml --all-targets -- -D warnings
+      - name: Build and qualify the source bundle
+        env:
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          if [ -n "$RELEASE_TAG" ]; then
+            pnpm test:zed-package --tag "$RELEASE_TAG"
+          else
+            pnpm test:zed-package
+          fi
+      - name: Qualify the exact published npm runtime
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        run: |
+          VERSION=$(node --input-type=module -e "console.log((await import('node:fs')).readFileSync('editors/zed/server-version','utf8').trim())")
+          AVAILABLE=$(npm view "@lensmap/language-server@$VERSION" version --registry https://registry.npmjs.org/)
+          test "$AVAILABLE" = "$VERSION"
+          npm install --prefix "$RUNNER_TEMP/lensmap-runtime" --omit=dev --ignore-scripts --no-audit --no-fund --registry https://registry.npmjs.org/ "@lensmap/language-server@$VERSION"
+          pnpm exec playwright install --with-deps chromium
+          LENSMAP_TEST_SERVER="$RUNNER_TEMP/lensmap-runtime/node_modules/.bin/lensmap-lsp" pnpm exec playwright test --config apps/web/playwright.config.ts bridge.spec.ts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zed-extension
+          path: |
+            artifacts/zed/*.tar.gz
+            artifacts/zed/SHA256SUMS
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  draft-release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: zed-extension
+          path: artifacts/zed
+      - name: Create a draft only; no registry submission
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" artifacts/zed/*.tar.gz artifacts/zed/SHA256SUMS --verify-tag --draft --prerelease --title "Lensmap Zed $GITHUB_REF_NAME" --notes "Experimental Zed dev-extension source/Wasm bundle. The pinned npm runtime must already be published. See https://github.com/nicodoggie/lensmap/blob/main/docs/zed-release.md for installation, native acceptance and the separate human-led Zed registry process."
+          gh release view "$GITHUB_REF_NAME" --json url,isDraft,isPrerelease,tagName,assets

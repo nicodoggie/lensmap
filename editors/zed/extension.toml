@@ -1,9 +1,20 @@
-id = "lensmap"
+id = "lensmap-lsp"
 name = "Lensmap (experimental)"
-version = "0.0.0"
+version = "0.1.0"
 schema_version = 1
 authors = ["Lensmap contributors"]
-description = "Launch the local Lensmap TypeScript language server and browser bridge."
+description = "Lensmap language server and live browser preview, installed through npm or a local development override."
+repository = "https://github.com/nicodoggie/lensmap"
+
+# Zed's selected Node may have any absolute path; only its version is queried.
+[[capabilities]]
+kind = "process:exec"
+command = "*"
+args = ["--version"]
+
+[[capabilities]]
+kind = "npm:install"
+package = "@lensmap/language-server"
 
 [language_servers.lensmap]
 name = "Lensmap"

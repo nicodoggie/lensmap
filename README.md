@@ -16,9 +16,12 @@ design checkpoint and deferred goals.
 The `@lensmap/document` and `@lensmap/language-server` npm packages now have a
 qualified local pack/install path and a prepared, approval-gated release
 workflow. **They have not been published by this preparation.** See
-[package verification and release setup](docs/npm-release.md). Zed registry
-publication and its automatic npm runtime installer remain deferred; no GitHub
-release is needed for the current dev-extension flow.
+[package verification and release setup](docs/npm-release.md). The Zed extension
+now has a pinned npm-runtime launcher, a verified dev-install source/component
+bundle and a prepared [Zed release flow](docs/zed-release.md). Fresh public npm
+installation awaits first publication; Zed registry submission stays separate
+and human-led. The checkout-local dev-extension override still works without a
+GitHub release or published npm package.
 
 ## Run locally
 
@@ -90,9 +93,10 @@ On Arch Linux, Playwright warns that it uses its Ubuntu fallback browser; browse
 - `apps/web` — React + Vite playground and canvas-first bridge shell sharing a controlled viewer, lens/camera/clearance functions and viewer-owned radial layout. The editable sample is `apps/web/src/sample.yaml`.
 - `packages/document` — portable Zod schema, YAML source analysis, revision-bound bindings, session identities, semantic graphs and source-preserving content-edit preparation. No DOM, camera or LSP ownership.
 - `packages/language-server` — stdio language services and authenticated loopback HTTP/SSE bridge over the same attached document sessions.
-- `editors/zed` — minimal Rust/Wasm launcher for the configured TypeScript server, not a native renderer. No placeholder packages or published extension.
+- `editors/zed` — Rust/Wasm component launcher with a pinned Zed-managed npm runtime or explicit local binary override, not a native renderer. Extension ID `lensmap-lsp`; language-server/settings key `lensmap`. No published extension yet.
 - `turbo.json` — local build/task orchestration, including web assets before the server's package-local preview copy; no remote cache. The installed Turbo docs were read before defining tasks.
 - `.github/workflows/npm-release.yml` — prepared npm verification/release flow; actual publishing needs package trust setup, a protected `npm` environment and an explicitly authorized matching release tag.
+- `.github/workflows/zed-release.yml` — manual source/component artifact qualification; matching tags additionally require a working published npm runtime before creating a draft GitHub prerelease. No upstream registry PR automation.
 
 The samples use explicit branch/cross edges, Markdown notes and an unresolved-thought example. The default is automatically positioned; the saved comparison example retains its authored coordinates. The data is invented, not Bastion Falls canon. Durable playground persistence, import/export, a published viewer API, full CLI/MCP graph editing and embedded Markdown editing assistance remain deferred. The current LSP offers diagnostics, definitions, document highlights, basic authored-ID completion and preview code actions; it is not a full editor-tooling implementation. Synthetic pointer/touch tests are not proof of physical comfort, large-graph performance or universal collision avoidance.
 

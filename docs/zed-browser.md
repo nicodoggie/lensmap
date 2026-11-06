@@ -15,9 +15,11 @@ checkout and keep the server path in workspace settings. A GitHub release, an
 extension-registry submission and an automatic runtime downloader are not
 required. npm package preparation and an approval-gated npm release workflow are
 now available; see [package/release setup](npm-release.md). This does not mean
-the packages were published. Zed's automatic npm installer and extension-registry
-release flow remain deferred; the current extension does not download or update
-a prebuilt Lensmap runtime automatically.
+the packages were published. The extension now supports a pinned Zed-managed npm
+runtime when no binary override is supplied, and has a prepared
+[source/component release flow](zed-release.md). Fresh public npm installation
+is pending first publication. Keep the local override below until then; Zed
+registry submission remains a separate human-led step.
 
 ## Build and configure
 
@@ -36,8 +38,10 @@ Re-run this command after moving the checkout or changing its Node installation.
 
 1. In Zed, run **zed: install dev extension** and select this checkout's
    `editors/zed` directory. This small Rust/Wasm extension only launches the
-   configured TypeScript server; it does not render the map. Zed's development
-   extension build needs Rust and the `wasm32-wasip1` target.
+   configured TypeScript server; it does not render the map. Zed 1.27's development
+   extension build needs Rust and the `wasm32-wasip2` target. The extension ID is
+   now `lensmap-lsp`; uninstall an earlier `lensmap` dev extension before
+   reinstalling to avoid duplicate launchers. Keep the `lsp.lensmap` settings key.
 2. Merge the printed settings into the intended workspace's `.zed/settings.json`.
    Preserve unrelated settings and existing language servers. `.lensmap` files
    are associated with YAML; the Lensmap server ignores ordinary YAML documents.

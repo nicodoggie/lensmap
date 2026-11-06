@@ -113,5 +113,8 @@ lensmap-lsp --configure-zed --zed /usr/bin/zeditor
 Use a verified host executable path. Merge the printed settings into the intended
 workspace and keep the separately installed Zed dev extension; the npm package
 neither modifies settings nor registers an editor extension. The Node/package
-paths must remain installed. Zed's npm downloader/release flow and registry
-submission are a later integration milestone. See [Zed setup](zed-browser.md).
+paths must remain installed. Alternatively, the prepared [Zed release flow](zed-release.md)
+uses Zed's own npm installation of a pinned runtime when no binary override is
+present. Its cached-runtime launch is qualified, but fresh public npm installation
+awaits first publication. Zed registry submission remains separate and human-led.
+See [Zed setup](zed-browser.md).
