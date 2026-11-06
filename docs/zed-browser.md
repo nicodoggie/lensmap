@@ -10,6 +10,13 @@ The format and integration remain experimental. Linux/X11 with installed Zed
 versions have not been qualified. This is a local development installation,
 not a published extension or npm release.
 
+**Recommended installation: use the dev-extension flow below.** Build from this
+checkout and keep the server path in workspace settings. A GitHub release, an
+extension-registry submission and an automatic runtime downloader are not
+required. Those distribution features and their release workflow are deferred
+until the integration is more mature; the current setup does not download a
+prebuilt Lensmap runtime or update it automatically.
+
 ## Build and configure
 
 From this checkout, with Node 24.16+ and pnpm 12.15.0:

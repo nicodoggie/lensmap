@@ -4,13 +4,18 @@ A text-first mind-map project exploring a **spatial magnification lens** for cyc
 
 This is a working TypeScript/React lens playground—not a restoration of the pruned scratch HTML and not the finished authoring tool. See [HANDOFF.md](HANDOFF.md) for canonical decisions, [docs/design.md](docs/design.md) for scope, and [the incomplete v1 schema](docs/schema-v1.md) for the current YAML format.
 
-The first **live Zed/browser integration** is available as a local development
-installation: [setup, usage and API](docs/zed-browser.md). It consumes unsaved
+The recommended way to use the **live Zed/browser integration** is to build
+this checkout and install it as a **Zed dev extension**:
+[setup, usage and API](docs/zed-browser.md). It consumes unsaved
 editor buffers, retains valid maps across source errors, supports optional caret
 follow and explicit source reveal, and mediates bounded content edits with
 revision checks and real buffer readback. Editor application is **not atomic**.
 The [integration direction](docs/integration-direction.md) preserves the earlier
 design checkpoint and deferred goals.
+
+Zed registry publication, downloadable runtime releases and release automation
+are deferred while the integration matures. No GitHub release is needed for the
+dev-extension flow.
 
 ## Run locally
 
@@ -81,3 +86,7 @@ On Arch Linux, Playwright warns that it uses its Ubuntu fallback browser; browse
 The samples use explicit branch/cross edges, Markdown notes and an unresolved-thought example. The default is automatically positioned; the saved comparison example retains its authored coordinates. The data is invented, not Bastion Falls canon. Durable playground persistence, import/export, a published viewer API, full CLI/MCP graph editing and embedded Markdown editing assistance remain deferred. The current LSP offers diagnostics, definitions, document highlights, basic authored-ID completion and preview code actions; it is not a full editor-tooling implementation. Synthetic pointer/touch tests are not proof of physical comfort, large-graph performance or universal collision avoidance.
 
 This folder is its own Git repository. Verified, meaningful milestones are checkpointed with local commits. Pushes, remote creation and publication require separate explicit approval.
+
+## License
+
+Lensmap, including its Zed extension, is licensed under the [MIT License](LICENSE).
