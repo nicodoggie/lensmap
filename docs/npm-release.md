@@ -2,12 +2,13 @@
 
 ## Current state
 
-The local package/install path is qualified for `@lensmap/document` and
-`@lensmap/language-server`, initially at **0.1.0**. Both are experimental public
-packages, using the **next** dist-tag rather than claiming a stable `latest`
-release. This preparation does not mean either package has been published.
-The `@lensmap` organization belongs to Nico; owning the scope does not create
-package records or configure trusted publishing.
+`@lensmap/document` and `@lensmap/language-server` are published at **0.1.0**,
+with both **next** and **latest** pointing to that version. They remain
+experimental packages. Downloaded registry tarballs matched the retained
+CI-verified bytes. A fresh public-registry production installation passed export,
+declaration, CLI, generated Zed-settings and all three browser-bridge checks.
+The maintainer reports configuring trusted publishers for both packages;
+successful OIDC publication and OIDC dist-tag promotion remain unexercised.
 
 - **document** contains compiled ESM and TypeScript declarations for the root
   and `/v1` exports. It owns analysis/source semantics, not a renderer.
@@ -48,30 +49,68 @@ to its installed executable, not a monorepo path. Explicit `--assets PATH` is
 still supported. Build the server through the root Turbo graph, not its `tsc`
 command alone.
 
-## Release workflow (prepared, not remotely exercised)
+## Release workflow
 
-`.github/workflows/npm-release.yml` has two entry points:
+`.github/workflows/npm-release.yml` separates publishing from promotion:
 
-- **Run workflow** performs checks and package acceptance, then retains tarballs
-  as `npm-packages`. Manual dispatch never publishes, even if run on a tag.
-- A pushed **npm-v0.1.0** tag (or later matching version) performs the same checks,
-  then waits on the GitHub **npm** environment before publication. Both manifests
-  must have the same version and the tag must match it. Set required reviewers
-  and restrict permitted release tags on that environment **before using it**;
-  the YAML environment name alone does not establish human approval protection.
+- **Push an `npm-v…` tag:** checks and package acceptance run first, retaining
+  tarballs as `npm-packages`. Both manifests must have the same version, and the
+  tag must match it. The publish job downloads those same verified artifacts
+  without rebuilding, then publishes **document first, then language-server**,
+  explicitly public and with **next**. Normal subsequent releases do not move
+  `latest`; the initial release's existing `latest` tag is retained.
+- **Run workflow, Update latest unchecked:** performs the same verification and
+  retains tarballs, but never publishes or changes tags. The checkbox defaults
+  to off; the version input is ignored in this mode.
+- **Run workflow, Update latest checked:** enter an exact already-published
+  version such as `0.1.0`. Run from `main` with the current workflow/helper; the
+  target version need not match the checkout's manifests. Only the promotion
+  job runs: no application build, package installation, packing or publication.
+  It checks both package identities/versions and the server's exact engine
+  dependency before changing either tag. It moves **latest** for both packages,
+  preserves **next**, and reads both tags back. Already-matching latest tags
+  require no write. An older published version can be selected for rollback.
 
-The publish job downloads the same verified tarballs, does not rebuild them,
-and publishes **document first, then language-server**, explicitly public and
-with `next`. It reads back each exact version from the registry. GitHub's native
-artifact digest validation protects transfer. Publication jobs are serialized;
-no PR-triggered job receives publishing authority. Actions are pinned to their
-verified release commits.
+Publishing and promotion share the GitHub **npm** environment and the same
+workflow-wide concurrency group. They are serialized, and no PR-triggered job
+receives registry-write authority. Actions are pinned to verified release
+commits. GitHub's native artifact digest validation protects publish transfer.
 
-The workflow uses GitHub-hosted Ubuntu, Node 24 and npm 11.20.0. npm trusted
-publishing needs npm 11.5.1+ and Node 22.14+. Only the publish job receives
-`id-token: write`; no long-lived npm token is required or added. Public GitHub
-repository/package OIDC publishing generates provenance automatically. See
-[npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
+**The environment name is not an approval gate by itself.** At the latest check,
+`npm` had no protection rules or deployment-ref restrictions. Configure required
+reviewers and allowed refs separately. Permit `npm-v*` tags for publication and
+`main` for manual promotion. A solo maintainer who approves their own runs must
+leave prevention of self-review disabled. This repository does not install
+those account settings.
+
+Both write jobs use GitHub-hosted Ubuntu, Node 24 and pinned npm **11.21.0**.
+OIDC dist-tag support requires npm 11.21.0+ on the 11.x line (or 12.2.0+);
+the previous npm 11.20.0 publish client was insufficient for promotion. Only the
+publish and promote jobs receive `id-token: write`; no long-lived npm token is
+required or added. Public GitHub repository/package OIDC publication generates
+provenance automatically. Promotion only changes tags and does not regenerate
+package bytes or provenance. See [npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
+
+### Local promotion verification and recovery
+
+```sh
+pnpm test:release
+node scripts/npm-promote.ts --version 0.1.0 --dry-run
+```
+
+The dry run reads actual public-registry prerequisites and reports previous
+tags without modifying them. Focused tests exercise promotion, preflight
+failures, dry runs, partial writes and readback. `pnpm check` includes them.
+Versions must be exact: ranges, tags, a `v` prefix and whitespace-modified inputs
+are rejected without normalization. Registry readback retries are bounded;
+mutations are never automatically retried.
+
+Dist-tag updates are **not transactional across packages**. If the second
+update fails, the first may already be live. The job reports completed writes
+and the previous tag snapshots; it does not attempt an automatic rollback.
+Inspect both actual tags before rerunning or selecting the previous version.
+Rerunning the same promotion skips already-matching tags. A readback mismatch
+or concurrent `next` change fails rather than claiming a complete promotion.
 
 ### First publication and account setup
 
@@ -86,9 +125,14 @@ local package tests or by creating this workflow:
    requires an existing package for trust configuration.
 2. Configure a trusted publisher for **each** package: GitHub owner `nicodoggie`,
    repository `lensmap`, workflow filename **npm-release.yml**, environment
-   **npm**, with direct publish permission. Follow npm's validation deadline for
-   a newly configured publisher. Configure the GitHub environment's required
-   approval separately; no account settings are installed by this repository.
+   **npm**, with **Allow npm publish** for tagged releases and the independent
+   **Allow npm dist-tag** permission for manual promotion. Newly created
+   configurations currently require their first successful publish within two
+   days; promotion of an existing version is not proof of that publish
+   validation. Configure the GitHub environment's required approval separately;
+   no account settings are installed by this repository. The original tagged
+   `0.1.0` run verified artifacts but failed publication with `ENEEDAUTH`;
+   subsequent authorized local publication completed the bootstrap.
 3. For subsequent releases, update both package versions, run the checks, commit,
    and only with push/publication authorization create/push the matching `npm-v…`
    tag. Do not tag an already bootstrapped version and expect it to republish.
@@ -115,6 +159,8 @@ workspace and keep the separately installed Zed dev extension; the npm package
 neither modifies settings nor registers an editor extension. The Node/package
 paths must remain installed. Alternatively, the prepared [Zed release flow](zed-release.md)
 uses Zed's own npm installation of a pinned runtime when no binary override is
-present. Its cached-runtime launch is qualified, but fresh public npm installation
-awaits first publication. Zed registry submission remains separate and human-led.
+present. Its cached-runtime launch is qualified, and a fresh public npm runtime
+installation passed package/browser checks. Zed's own fresh registry-download
+launcher path still needs host acceptance; Zed registry submission remains
+separate and human-led.
 See [Zed setup](zed-browser.md).
