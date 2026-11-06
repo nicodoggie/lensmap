@@ -48,4 +48,6 @@ Apply is transactional from the UI's perspective: parse/validate/normalize/layou
 
 ## Still incomplete
 
+The [default connection-type specification](default-connections.md) is a review draft for relationship metadata, portal authoring and navigation. It describes future behavior; `type` and `url` are not accepted by the current schema.
+
 Document metadata/frontmatter, richer edge metadata, relative coordinates, heading anchors, migration rules, import/export, durable playground saving and embedded Markdown editing assistance remain incomplete. The attached language server now offers basic authored-ID completion in valid source, independently of the standalone textarea. See the editable `apps/web/src/sample.yaml` for playground input and [Zed setup](zed-browser.md) for the editor bridge.
