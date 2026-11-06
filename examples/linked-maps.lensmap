@@ -1,0 +1,62 @@
+# Experimental v1: visible portals to other maps and ordinary resources.
+# In Zed, open this file, quickstart.lensmap and night-ferry.lensmap first.
+# Map loading uses attached editor buffers, including unsaved edits.
+version: v1
+nodes:
+  - id: notebook
+    summary: A connected ferry notebook
+    full_text: |
+      # A connected ferry notebook
+
+      Keep the small writing experiment, the larger ferry map and a few
+      reference documents connected without copying them into one map.
+
+      Click a portal to select it. Double-click, press Enter while the viewer
+      or a thought has focus, or use its explicit Open action to enter it.
+      Ordinary selection and Space do not open destinations.
+
+      Open both destination maps in Zed before trying the map portals.
+      Back returns to this notebook and its previous view.
+    connections:
+      # No fragment: enter the whole destination in fitted Overview.
+      - type: map_link
+        url: ./quickstart.lensmap
+        summary: Try the quickstart
+        full_text: |
+          A small place to try Markdown thoughts, shared connections and cycles.
+          Its source stays separate from this notebook.
+
+      - type: map_link
+        url: ./night-ferry.lensmap
+        summary: Explore the night ferry
+        full_text: |
+          Open the complete ferry map in Overview, then choose a thought.
+
+      # An authored thought ID is an exact target, not a generated heading slug.
+      - type: map_link
+        url: ./night-ferry.lensmap#tides
+        summary: Jump to the tide window
+        full_text: |
+          Enter Lens view centred on the existing `tides` thought.
+          This reaches the same destination map as the portal above,
+          but starts at a particular thought instead of its Overview.
+
+      - type: external_link
+        url: https://oceanservice.noaa.gov/facts/tides.html
+        summary: What are tides?
+        full_text: |
+          Background reading from NOAA for the ferry's changing shoreline.
+          This is an ordinary web resource, not another Lensmap document.
+
+      # Minimal portal: without local prose, its address supplies the label.
+      - type: external_link
+        url: https://commonmark.org/help/
+
+      # Relative file destinations are also external links, not map imports.
+      - type: external_link
+        url: ./README.md
+        summary: Read the sample guide
+        full_text: |
+          Open the nearby Markdown guide through the editor's resource opener.
+          A standalone browser cannot open local files; the viewer reports
+          that limitation without replacing the current map.

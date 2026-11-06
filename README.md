@@ -26,8 +26,10 @@ GitHub release or published npm package.
 ## Run locally
 
 Ready-to-open `.lensmap` files are in [examples/](examples/README.md): start with
-[quickstart](examples/quickstart.lensmap), or explore the larger
-[Night Ferry](examples/night-ferry.lensmap) map. For live Zed preview, follow
+[quickstart](examples/quickstart.lensmap), explore the larger
+[Night Ferry](examples/night-ferry.lensmap) map, or use the
+[linked notebook](examples/linked-maps.lensmap) to try map portals and external
+references. For live Zed preview, follow
 the [editor setup](docs/zed-browser.md).
 
 Prerequisites: Node **24.16+** and pnpm **12.15.0** (the pinned package manager).
