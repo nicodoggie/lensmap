@@ -2,7 +2,7 @@
   "name": "@lensmap/language-server",
   "license": "MIT",
   "description": "Experimental Lensmap language server with an authenticated loopback browser preview",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "files": [
     "dist"
   ],

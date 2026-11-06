@@ -2,7 +2,7 @@
   "name": "@lensmap/document",
   "license": "MIT",
   "description": "Experimental Lensmap document engine: YAML analysis, semantic graphs and revision-bound source edits",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "files": [
     "dist"
   ],
@@ -42,8 +42,8 @@
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "ajv": "8.20.0",
     "typescript": "7.0.2",
-    "vitest": "5.1.0",
-    "ajv": "8.20.0"
+    "vitest": "5.1.0"
   }
 }
