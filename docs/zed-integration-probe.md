@@ -4,13 +4,13 @@
 
 Zed can supply the source-editing half of a Lensmap workflow. The installed
 editor demonstrated unsaved-buffer synchronization, explicit caret commands,
-source reveal, undoable buffer edits, and `.lensmap` association with YAML. It
-did **not** establish an embedded graphical viewer or strict apply-time revision
-rejection.
+conditional automatic caret signals, source reveal, undoable buffer edits,
+and `.lensmap` association with YAML. It did **not** establish an embedded
+graphical viewer or strict apply-time revision rejection.
 
-This is a feasibility record, not an implementation plan or authorization to
-build an adapter, change the authoring grammar, rename fixtures, or substitute
-an external viewer for an in-editor pane.
+This is a feasibility record, including subsequent direction agreed with Nico,
+not an implementation plan or authorization to build an adapter, change the
+authoring grammar, or rename fixtures.
 
 ## Qualification scope
 
@@ -21,8 +21,8 @@ an external viewer for an in-editor pane.
   settings/data. This is not Wayland, macOS, Windows, or physical-keyboard
   qualification.
 - LSP transport was exercised through an existing Rust language attachment with
-  a synthetic `main.rs`, not through a shipped Lensmap language extension. YAML
-  file association was a separate native check; its language servers were
+  synthetic `main.rs` and `caret.rs` fixtures, not a shipped Lensmap extension.
+  YAML file association was a separate native check; its language servers were
   disabled.
 - No application code, dependency manifests, real editor settings, or accounts
   were changed. The owned editor/display process groups were confirmed gone
@@ -34,7 +34,8 @@ an external viewer for an in-editor pane.
 | --- | --- | --- |
 | Standalone `.lensmap` text file | Configured `file_types` to associate `lensmap` with YAML. Native editor displayed syntax highlighting, and a task reported the fixture language as `YAML`. | Does not establish schema diagnostics, embedded Markdown tooling, or Lensmap semantics. |
 | Full unsaved source | Recorder received the initial buffer through `textDocument/didOpen` and subsequent unsaved typing through incremental `textDocument/didChange`. Disk contents stayed unchanged. | Requires a real language-server attachment and revision-consistent analysis; a file watcher alone is insufficient. |
-| Explicit caret command | A named task bound with `task::Spawn` supplied the active file, row, column, language, and selection. | No continuous caret callback was established. Task coordinates and analysis must refer to the same live document revision. |
+| Explicit caret command | A named task bound with `task::Spawn` supplied the active file, row, column, language, and selection. | This is command-driven. See the separate automatic-signal follow-up below; coordinates and analysis must use the corresponding live source. |
+| Automatic caret signal | With `documentHighlightProvider` advertised, native arrow movement and mouse clicks generated position-bearing `textDocument/documentHighlight` requests without source edits. | Conditional language-feature requests, not an unconditional caret subscription; multiword selection suppressed the tested signal. |
 | Unsaved selection | Select-all followed by the task returned text identical to the live buffer reconstructed from LSP notifications, including unsaved edits. | A selection task is not automatic full-buffer synchronization. |
 | Reveal in source | Invoked the installed CLI with the private user-data directory, `--existing`, and `association.lensmap:3:5`. A subsequent task reported that exact file, row `3`, and column `5`. | This proves local CLI-to-editor navigation, not browser permission to launch a local process or preservation of viewer focus. |
 | Undoable buffer edit | A current-version `workspace/applyEdit` changed the live buffer without writing the file. One native Undo removed the server edit while retaining preceding human typing. | Multi-document atomicity, overlapping edits, redo, and sustained concurrent writers were not tested. |
@@ -100,6 +101,51 @@ the negotiated LSP encoding. The ASCII-only CLI reveal check does not
 independently establish CLI Unicode column units. Do not use coordinates from
 current source against an unadjusted last-valid binding index.
 
+## Follow-up: automatic caret signals qualified
+
+The initial recorder advertised source synchronization but not document
+highlighting. A follow-up recorder advertised `documentHighlightProvider: true`
+and returned empty highlight results while recording actual client requests.
+Zed sent `textDocument/documentHighlight` positions automatically after caret
+movement, with no hotkey command, saving, or source edits required.
+
+| Native movement case | Observed zero-based UTF-16 position | Result |
+| --- | --- | --- |
+| Move into an identifier | Line `2`, character `9` | Expected request received |
+| Move one character within that word | Line `2`, character `10` | Expected request received |
+| Move into indentation | Line `2`, character `2` | Expected request received |
+| Move to a blank line | Line `3`, character `0` | Expected request received |
+| Move to punctuation | Line `2`, character `14` | Expected request received |
+| Move within a comment containing non-ASCII text and emoji | Line `4`, character `25` | Expected request received |
+| Click another source line | Line `5`, character `11` | Request received on the clicked line |
+
+All seven collapsed-caret cases matched. Disk bytes and the live source stayed
+unchanged. A native selection spanning `Alpha thought` produced no highlight
+request for its final head position; a screenshot confirmed the selection and
+focused editor rather than an intervening modal.
+
+The pinned selection code refreshes document highlights on local selection
+changes. The highlight implementation uses a configurable debounce and skips
+requests when selection endpoints have different surrounding-word ranges; it
+also has other guards such as pending rename state.[18][19]
+
+This supports a Zed-specific automatic-follow adapter, not a universal LSP
+caret-event API. Lensmap can implement meaningful thought/reference highlighting
+and also use the incoming position to resolve the owning thought. The browser
+bridge can publish that focus separately from graph changes. A follow toggle,
+centring only when the owning thought changes, and an explicit caret command
+as fallback are proposed interaction choices, not implemented behavior.
+
+The native experiment qualified the signal, not an end-to-end moving Lensmap
+viewer. Source bindings, revision association, invalid-source behavior, focus
+preservation, other selection modes, and actual Lensmap language attachment
+still need integration proof. Do not substitute a last-valid source range map
+for bindings matching the current position.
+
+Receipts are `caret-results.json` and `caret-events.jsonl` in the same private
+scratch root, with `caret-initial.png` and `caret-after-cases.png` captures.
+The follow-up editor/display process groups were confirmed gone afterward.
+
 ## Architecture implications, not new implementation scope
 
 1. **Keep Zed as source editor.** The live-buffer boundary is feasible; a second
@@ -110,14 +156,17 @@ current source against an unadjusted last-valid binding index.
    reimplementing it.
 3. **Separate language service from viewer transport.** LSP can provide a
    revisioned source session and editor language features; that does not make it
-   a camera protocol or establish caret-following and a graphical host.
-4. **Treat explicit caret centring as a qualified candidate.** A task can
-   deliver source coordinates. Live revision matching, the viewer handoff, and
-   keeping editor keyboard focus still require integration proof.
-5. **Keep viewer placement unresolved.** A companion browser/window is a
-   plausible route, not an accepted replacement for an embedded pane. If an
-   in-editor pane is mandatory, the ordinary extension surface inspected here is
-   a blocker requiring a separate host solution.
+   a camera protocol or a graphical host.
+4. **Use qualified caret signals without overstating integration.** Tasks
+   provide explicit positions; document-highlight requests provide conditional
+   automatic positions. Live revision matching, the viewer handoff, and keeping
+   editor keyboard focus still require integration proof.
+5. **Use the selected browser-bridge direction.** Nico subsequently accepted an
+   external viewer for the initial Zed workflow and proposed co-hosting a
+   localhost endpoint in the language-server process. Exact transport,
+   authorization, and lifecycle remain design work. A possible GPUI renderer
+   for future native embedding is explicitly deferred even if hosting becomes
+   available; do not add it to the current bridge scope.
 6. **Do not turn language association into grammar approval.** `.lensmap`
    remains ordinary text in this exploration. Generated JSON Schema,
    preservation of refinements, semantic diagnostics, and public schema/version
@@ -170,3 +219,5 @@ Lensmap package.
 [7] <https://github.com/zed-industries/zed/blob/c84af5b99cbc366d675064e52b23664a015b6e35/crates/paths/src/paths.rs>
 [8] <https://github.com/zed-industries/zed/blob/c84af5b99cbc366d675064e52b23664a015b6e35/crates/workspace/src/tasks.rs>
 [9] <https://github.com/zed-industries/zed/issues/21208>
+[18] <https://github.com/zed-industries/zed/blob/c84af5b99cbc366d675064e52b23664a015b6e35/crates/editor/src/editor.rs>
+[19] <https://github.com/zed-industries/zed/blob/c84af5b99cbc366d675064e52b23664a015b6e35/crates/editor/src/selection.rs>
