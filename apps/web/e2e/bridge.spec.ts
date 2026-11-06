@@ -171,6 +171,7 @@ test("unsaved live source preserves exploration, keeps an invalid last map and f
   try {
     await f.go(page);
     expect(new URL(page.url()).hash).toBe("");
+    await expect(page.locator(".bridge-shell .masthead")).toBeHidden();
     await expect(
       page.getByRole("textbox", { name: "YAML source" }),
     ).toHaveCount(0);

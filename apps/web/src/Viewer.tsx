@@ -67,6 +67,7 @@ export interface ViewerSidebarContext {
 }
 
 export interface ViewerProps {
+  embedded?: boolean;
   navigationControls?: ReactNode;
   thoughtLink?: (anchor: string) => string;
   onActivatePortal?: (node: GraphNode) => void;
@@ -80,10 +81,12 @@ export interface ViewerProps {
   onRevealSource?: (key: string) => void;
   showInspector?: boolean;
   renderSidebar?: (context: ViewerSidebarContext) => ReactNode;
+  renderExternalInspector?: (context: ViewerSidebarContext) => ReactNode;
 }
 
 export default function Viewer({
   graph,
+  embedded = false,
   navigationControls,
   thoughtLink,
   onActivatePortal,
@@ -96,6 +99,7 @@ export default function Viewer({
   onRevealSource,
   showInspector = true,
   renderSidebar,
+  renderExternalInspector,
 }: ViewerProps) {
   const scope = useId();
   const anchors = useMemo(() => thoughtAnchors(graph.nodes), [graph.nodes]);
@@ -583,19 +587,35 @@ export default function Viewer({
     setDragging(false);
   }
 
+  const Container = embedded ? "div" : "main";
+  const sidebarContext: ViewerSidebarContext = {
+    graph,
+    active,
+    thoughtHref: active
+      ? thoughtLink?.(anchors.get(active.key) ?? active.key)
+      : undefined,
+    onActivatePortal,
+    onFocus: focusNode,
+    onFragment: focusFragment,
+  };
+
   return (
-    <main>
-      <header className="masthead">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            ◎
-          </span>
-          <h1>Lensmap</h1>
-          <span className="tag">spatial lens lab</span>
-        </div>
-        <p>Follow a thought. Keep the world around it.</p>
-        <span className="phase">01 / web experiment</span>
-      </header>
+    <Container
+      className={`lensmap-viewer${embedded ? " lensmap-embedded" : ""}`}
+    >
+      {!embedded && (
+        <header className="masthead">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true">
+              ◎
+            </span>
+            <h1>Lensmap</h1>
+            <span className="tag">spatial lens lab</span>
+          </div>
+          <p>Follow a thought. Keep the world around it.</p>
+          <span className="phase">01 / web experiment</span>
+        </header>
+      )}
 
       <section
         className={`workspace${showInspector ? "" : " canvas-only"}`}
@@ -1163,32 +1183,15 @@ export default function Viewer({
         )}
         {showInspector &&
           (renderSidebar ? (
-            renderSidebar({
-              graph,
-              active,
-              thoughtHref: active
-                ? thoughtLink?.(anchors.get(active.key) ?? active.key)
-                : undefined,
-              onActivatePortal,
-              onFocus: focusNode,
-              onFragment: focusFragment,
-            })
+            renderSidebar(sidebarContext)
           ) : (
             <ViewerInspector
-              graph={graph}
-              active={active}
-              thoughtHref={
-                active
-                  ? thoughtLink?.(anchors.get(active.key) ?? active.key)
-                  : undefined
-              }
-              onFocus={focusNode}
-              onFragment={focusFragment}
-              onActivatePortal={onActivatePortal}
+              {...sidebarContext}
               onRevealSource={onRevealSource}
             />
           ))}
       </section>
+      {renderExternalInspector?.(sidebarContext)}
       <p className="sr-only" role="status">
         Selected thought: {active ? label(active) : "none"}.{" "}
         {inNeighbourhood
@@ -1209,6 +1212,6 @@ export default function Viewer({
         </span>
         <span>Source layout is stable. Magnification is a view.</span>
       </footer>
-    </main>
+    </Container>
   );
 }

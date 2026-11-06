@@ -40,9 +40,6 @@
 .bridge-shell .masthead {
   display: none;
 }
-.workspace.canvas-only {
-  grid-template-columns: minmax(0, 1fr);
-}
 .bridge-shell .map {
   height: clamp(440px, 77vh, 1100px);
 }
