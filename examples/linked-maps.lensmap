@@ -61,7 +61,7 @@ nodes:
           A standalone browser cannot open local files; the viewer reports
           that limitation without replacing the current map.
 
-      # Solid prevention connectors end in paired blocking bars by the outcome.
+      # Paired blocking bars interrupt the painted line beside the outcome.
       - id: pier-closed
         summary: Pier closed for repairs
         full_text: |
@@ -70,8 +70,9 @@ nodes:
           visible so we can plan around what is no longer available.
 
           Select this thought and explore its neighbourhood to inspect the
-          paired blocking bars. They belong beside the affected thoughts, not
-          in the middle of the lines. No simulation or automatic hiding occurs.
+          paired blocking bars and the empty gap between them. They belong
+          beside the affected thoughts, not in the middle of the lines.
+          No simulation or automatic hiding occurs.
         connections:
           - type: prevents
             summary: Board at this pier

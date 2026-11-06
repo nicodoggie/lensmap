@@ -1,5 +1,6 @@
 import { connectionWording } from "@lensmap/document";
 import { useId } from "react";
+import ConnectionGap from "./ConnectionGap";
 import { connectionAppearance } from "./connection-appearance";
 import { colours, type GraphNode, label } from "./graph";
 import type { Point } from "./lens";
@@ -81,8 +82,13 @@ export default function NeighbourhoodContinuations({
           </linearGradient>
         ))}
       </defs>
-      {segments.map((segment) => (
-        <g key={segment.edge.key}>
+      {segments.map((segment) => {
+        const appearance = connectionAppearance(
+          segment.edge.type,
+          segment.incoming ? "incoming" : "outgoing",
+        );
+        const edgeClass = `edge continuation ${segment.edge.kind} ${previewEdges.has(segment.edge.key) ? "connection-preview" : ""}`;
+        const painted = (
           <path
             data-continuation={segment.edge.key}
             data-connection-preview={
@@ -90,40 +96,48 @@ export default function NeighbourhoodContinuations({
             }
             data-kind={segment.edge.kind}
             data-type={segment.edge.type ?? "connected"}
-            strokeDasharray={
-              connectionAppearance(segment.edge.type).dashed ? "7 6" : undefined
-            }
+            strokeDasharray={appearance.dashed ? "7 6" : undefined}
             data-direction={segment.incoming ? "incoming" : "outgoing"}
             d={segment.path}
             stroke={`url(#${segment.id})`}
             style={{ color: colours[segment.target.branch] }}
-            className={`edge continuation ${segment.edge.kind} ${previewEdges.has(segment.edge.key) ? "connection-preview" : ""}`}
+            className={edgeClass}
             markerStart={
-              connectionAppearance(
-                segment.edge.type,
-                segment.incoming ? "incoming" : "outgoing",
-              ).start
+              appearance.start
                 ? `url(#${markerPrefix}-arrow-${segment.target.branch})`
                 : undefined
             }
             markerEnd={
-              connectionAppearance(
-                segment.edge.type,
-                segment.incoming ? "incoming" : "outgoing",
-              ).end
-                ? `url(#${markerPrefix}-${connectionAppearance(segment.edge.type).end}-${segment.target.branch})`
+              appearance.end
+                ? `url(#${markerPrefix}-${appearance.end}-${segment.target.branch})`
                 : undefined
             }
           />
-          <path
-            className="edge-hit"
-            data-continuation-hit={segment.edge.key}
-            d={segment.path}
-          >
-            <title>{segment.description}</title>
-          </path>
-        </g>
-      ))}
+        );
+        return (
+          <g key={segment.edge.key}>
+            {appearance.end === "bar" ? (
+              <ConnectionGap
+                path={segment.path}
+                points={[segment.near, segment.far]}
+                className={edgeClass}
+                markerId={`${markerPrefix}-bar-gap`}
+              >
+                {painted}
+              </ConnectionGap>
+            ) : (
+              painted
+            )}
+            <path
+              className="edge-hit"
+              data-continuation-hit={segment.edge.key}
+              d={segment.path}
+            >
+              <title>{segment.description}</title>
+            </path>
+          </g>
+        );
+      })}
     </g>
   );
 }

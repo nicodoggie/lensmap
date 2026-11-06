@@ -103,7 +103,7 @@ For an entry authored under A with destination B:
 | Type omitted    | Connected, without a more specific claim   | Solid line; no endpoint markers                                                     |
 | `precedes`      | A comes before B in the described sequence | Solid line; arrowhead at B                                                          |
 | `follows`       | A comes after B in the described sequence  | Solid line; arrowhead at A                                                          |
-| `prevents`      | A rules out B                              | Solid line; two parallel blocking bars at B                                         |
+| `prevents`      | A rules out B                              | Solid line; two blocking bars at B with a clear gap between them                    |
 | `optional`      | An optional connection or branch           | Dashed line; no endpoint markers                                                    |
 | `external_link` | An ordinary external resource              | Solid line without arrowheads; external-link icon on the destination thought        |
 | `map_link`      | A Lensmap destination                      | Solid line without arrowheads; distinctive swirly portal on the destination thought |
@@ -111,6 +111,10 @@ For an entry authored under A with destination B:
 `precedes` and `follows` provide inverse readings, with the arrow pointing toward the later item in the sequence being described. Neither promises that the sequence is causal, immediate or executable. Source ordering does not implicitly create either relationship.
 
 A prevention edge remains a real visible connection. For example, an NPC's death can prevent access to their house's resources or sufficient legislative votes. Keep those unavailable possibilities visible as useful thoughts; do not delete their edges, hide their nodes or disable their controls.
+
+The two blocking bars are separated by a genuinely transparent gap: neither the
+connector's stroke nor its halo bridges them. This is not a background-coloured
+patch. Keep the invisible inspection/panning hit area continuous across the gap.
 
 Default styles do not distinguish nested definitions from `node_id` references. Retain their structural distinction for layout/source ownership, not as an automatic dash or arrow. These defaults supersede the former dashed-arrowed reference presentation.
 

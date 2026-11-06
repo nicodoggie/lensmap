@@ -18,6 +18,7 @@ import {
 } from "react";
 import Markdown from "react-markdown";
 import ConnectionChooser from "./ConnectionChooser";
+import ConnectionGap, { BlockingMarker } from "./ConnectionGap";
 import { limitMagnification } from "./clearance";
 import { connectionAppearance } from "./connection-appearance";
 import { edgeLanes } from "./edge-routing";
@@ -853,34 +854,13 @@ export default function Viewer({
                     </marker>
                   ))}
                   {Object.entries(colours).map(([branch, colour]) => (
-                    <marker
+                    <BlockingMarker
                       key={`bar-${branch}`}
                       id={`${scope}-bar-${branch}`}
-                      viewBox="0 0 10 10"
-                      refX="7"
-                      refY="5"
-                      markerWidth="8"
-                      markerHeight="8"
-                      orient="auto"
-                    >
-                      <line
-                        x1="2"
-                        x2="2"
-                        y1="0"
-                        y2="10"
-                        stroke={colour}
-                        strokeWidth="2"
-                      />
-                      <line
-                        x1="7"
-                        x2="7"
-                        y1="0"
-                        y2="10"
-                        stroke={colour}
-                        strokeWidth="2"
-                      />
-                    </marker>
+                      colour={colour}
+                    />
                   ))}
+                  <BlockingMarker id={`${scope}-bar-gap`} colour="black" gap />
                 </defs>
                 {local && (
                   <NeighbourhoodContinuations
@@ -930,12 +910,35 @@ export default function Viewer({
                   }
                   const radius = nodeRadius * from.scale;
                   const loop = radius * (3 + (lane?.index ?? 0));
-                  const path =
+                  const points =
                     edge.from === edge.to
-                      ? `M ${from.x + radius * 0.7} ${from.y - radius * 0.7} C ${from.x + loop} ${from.y - loop} ${from.x - loop} ${from.y - loop} ${from.x - radius * 0.7} ${from.y - radius * 0.7}`
-                      : `M ${start.x} ${start.y} Q ${(start.x + end.x) / 2 - (dy / distance) * bend} ${(start.y + end.y) / 2 + (dx / distance) * bend} ${end.x} ${end.y}`;
-                  return (
-                    <g key={edge.key}>
+                      ? [
+                          {
+                            x: from.x + radius * 0.7,
+                            y: from.y - radius * 0.7,
+                          },
+                          { x: from.x + loop, y: from.y - loop },
+                          { x: from.x - loop, y: from.y - loop },
+                          {
+                            x: from.x - radius * 0.7,
+                            y: from.y - radius * 0.7,
+                          },
+                        ]
+                      : [
+                          start,
+                          {
+                            x: (start.x + end.x) / 2 - (dy / distance) * bend,
+                            y: (start.y + end.y) / 2 + (dx / distance) * bend,
+                          },
+                          end,
+                        ];
+                  const path =
+                    points.length === 4
+                      ? `M ${points[0].x} ${points[0].y} C ${points[1].x} ${points[1].y} ${points[2].x} ${points[2].y} ${points[3].x} ${points[3].y}`
+                      : `M ${points[0].x} ${points[0].y} Q ${points[1].x} ${points[1].y} ${points[2].x} ${points[2].y}`;
+                  const edgeClass = `edge ${edge.kind} ${connectedEdges.has(edge.key) ? "connected" : local ? "context" : ""} ${previewEdges.has(edge.key) ? "connection-preview" : ""}`;
+                  const painted = (
+                    <>
                       <path d={path} className="edge-halo" />
                       <path
                         data-edge={`${edge.from}-${edge.to}`}
@@ -949,7 +952,7 @@ export default function Viewer({
                         d={path}
                         stroke={colours[to.node.branch]}
                         style={{ color: colours[to.node.branch] }}
-                        className={`edge ${edge.kind} ${connectedEdges.has(edge.key) ? "connected" : local ? "context" : ""} ${previewEdges.has(edge.key) ? "connection-preview" : ""}`}
+                        className={edgeClass}
                         markerStart={
                           appearance.start
                             ? `url(#${scope}-${appearance.start}-${to.node.branch})`
@@ -961,6 +964,22 @@ export default function Viewer({
                             : undefined
                         }
                       />
+                    </>
+                  );
+                  return (
+                    <g key={edge.key}>
+                      {appearance.end === "bar" ? (
+                        <ConnectionGap
+                          path={path}
+                          points={points}
+                          className={edgeClass}
+                          markerId={`${scope}-bar-gap`}
+                        >
+                          {painted}
+                        </ConnectionGap>
+                      ) : (
+                        painted
+                      )}
                       <path
                         className="edge-hit"
                         d={path}
@@ -1131,7 +1150,7 @@ export default function Viewer({
             )}
             <div className="legend">
               <span>━ connected</span>
-              <span>┄ optional · → sequence · ─|| prevents</span>
+              <span>┄ optional · → sequence · ─| | prevents</span>
             </div>
           </footer>
         </div>
