@@ -9,3 +9,4 @@ playwright-report/
 !.env.example
 editors/zed/target/
 editors/zed/extension.wasm
+artifacts/

@@ -1,5 +1,6 @@
 {
   "name": "lensmap",
+  "type": "module",
   "license": "MIT",
   "private": true,
   "packageManager": "pnpm@12.15.0",
@@ -10,7 +11,9 @@
     "test": "turbo run test",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "check": "pnpm lint && turbo run test typecheck build",
+    "check": "pnpm lint && tsc -p scripts/tsconfig.json && turbo run test typecheck build",
+    "pack:packages": "node scripts/npm-packages.ts",
+    "test:packages": "node scripts/npm-packages.ts --test",
     "test:e2e": "pnpm build && playwright test --config apps/web/playwright.config.ts",
     "schema:export": "pnpm --filter @lensmap/document build && node packages/document/dist/export-schema.js schemas/lensmap.experimental-v1.schema.json"
   },
@@ -18,6 +21,7 @@
     "node": ">=24.16.0"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
     "@biomejs/biome": "2.6.4",
     "@playwright/test": "1.64.1",
     "turbo": "2.11.10",

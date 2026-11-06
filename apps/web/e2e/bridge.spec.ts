@@ -36,15 +36,18 @@ async function editor() {
   const child = spawn(
     process.execPath,
     [
-      resolve(web, "../../packages/language-server/dist/main.js"),
+      process.env.LENSMAP_TEST_SERVER ??
+        resolve(web, "../../packages/language-server/dist/main.js"),
       "--stdio",
       "--no-open",
-      "--assets",
-      resolve(web, "dist"),
       "--zed",
       opener,
     ],
-    { env: { ...process.env, LENSMAP_REVEAL_LOG: log }, stdio: "pipe" },
+    {
+      cwd: scratch,
+      env: { ...process.env, LENSMAP_REVEAL_LOG: log },
+      stdio: "pipe",
+    },
   );
   // Consume stderr without publishing local credentials or private protocol data.
   child.stderr.resume();

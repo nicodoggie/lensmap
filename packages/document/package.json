@@ -1,8 +1,24 @@
 {
   "name": "@lensmap/document",
   "license": "MIT",
-  "private": true,
-  "version": "0.0.0",
+  "description": "Experimental Lensmap document engine: YAML analysis, semantic graphs and revision-bound source edits",
+  "version": "0.1.0",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "tag": "next",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicodoggie/lensmap.git",
+    "directory": "packages/document"
+  },
+  "engines": {
+    "node": ">=24.16.0"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -15,6 +31,7 @@
     }
   },
   "scripts": {
+    "prepack": "pnpm build",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

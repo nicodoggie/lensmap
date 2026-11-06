@@ -8,6 +8,49 @@ Live setup: Node `v24.16.0`, pnpm `12.15.0`. Pinned workspace tools/dependencies
 
 This is a fresh TypeScript lens experiment. The pruned scratch file was not moved or restored; historical render activity was located but final file-byte equivalence was not established.
 
+## npm package preparation (2026-11-06)
+
+- The checkout remained `/home/ensu/Projects/lensmap`, `main`, initially clean at
+  `8e8c4ad`. No interrupted packaging/publishing process was running. The existing
+  user Zed language server was left alone. Direct shell Node/npm were 26.13.0 /
+  11.20.0; the pinned pnpm command environment used Node 24.22.1 / npm 11.19.1.
+- The first real pack/install probe failed because the document tarball omitted
+  `dist/index.js`. Explicit publish file lists now retain compiled exports and
+  exclude source/tests/caches. Native `pnpm pack` supplies each package README
+  and the root MIT license; no parallel license-copy mechanism was introduced.
+- `pnpm check` passed **64 unit tests in 11 suites**, all workspace and script
+  TypeScript checks, Biome and three builds. Seven pre-existing informational
+  template-style notices remain non-blocking. The final test-helper-only change
+  added explicit Node type selection to the consumer compiler invocation; its
+  script lint/typecheck and package acceptance were rerun successfully without
+  repeating unchanged unit suites. The earlier probe typecheck failure was a
+  test compiler configuration issue, not a package runtime failure.
+- `pnpm test:packages` passed: actual 0.1.0 tarballs installed in a disposable
+  outside-workspace consumer with production dependencies only and install
+  scripts disabled. Public root and `/v1` imports, installed TypeScript
+  declarations, real executable permissions/help and generated Zed settings were
+  consumed. The packed server manifest depends on document **0.1.0**, not a
+  `workspace:` reference; its executable mode is **0755**.
+- The existing **three Chromium bridge tests** passed against that installed
+  executable, with its working directory outside the checkout, no `--assets`,
+  and no checkout Vite server. They retain live unsaved edit propagation, stable
+  exploration on prose edits, invalid-source last-map retention/recovery, caret
+  follow without stealing browser focus, synthetic-host reveal, unchanged saved
+  file bytes, attachment replacement, confirmed edit readback and shutdown.
+  Desktop and 430 px captures were inspected: real styled map/controls and a
+  stacked inspector, with small peripheral labels still a limitation. These
+  tests simulate the editor; they are not new native Zed/npm-registry proof.
+- `actionlint .github/workflows/npm-release.yml` and diff whitespace checks
+  passed. The prepared workflow retains tested tarballs and publishes document
+  before server through OIDC in the named `npm` environment. Manual dispatch is
+  verification-only. Required-reviewer protection and each package's trusted
+  publisher still need separate account setup. No workflow run, npm publication,
+  tag, push, account/settings change or Zed registry submission was performed.
+- See [release preparation](npm-release.md) for bootstrap, experimental `next`
+  tagging, partial-release recovery and the remaining registry-consumer/Zed
+  acceptance boundary. Owning the npm scope is not evidence of published
+  packages or an exercised trusted-publishing path.
+
 ## First Zed/browser integration (2026-11-06)
 
 Current setup and API boundaries: [Zed + browser preview](zed-browser.md).

@@ -13,9 +13,12 @@ revision checks and real buffer readback. Editor application is **not atomic**.
 The [integration direction](docs/integration-direction.md) preserves the earlier
 design checkpoint and deferred goals.
 
-Zed registry publication, downloadable runtime releases and release automation
-are deferred while the integration matures. No GitHub release is needed for the
-dev-extension flow.
+The `@lensmap/document` and `@lensmap/language-server` npm packages now have a
+qualified local pack/install path and a prepared, approval-gated release
+workflow. **They have not been published by this preparation.** See
+[package verification and release setup](docs/npm-release.md). Zed registry
+publication and its automatic npm runtime installer remain deferred; no GitHub
+release is needed for the current dev-extension flow.
 
 ## Run locally
 
@@ -69,9 +72,16 @@ After an automatic-layout update, choose **Apply YAML** again to regenerate posi
 pnpm check
 pnpm exec playwright install chromium
 pnpm test:e2e
+pnpm test:packages
 ```
 
 `check` runs Biome plus Turbo-managed unit tests, TypeScript checking (including browser tests/config), and the Vite production build. `test:e2e` builds and runs a small Chromium suite against a temporary loopback production-preview server on port **4173**; it refuses to reuse an existing server and shuts its own server down afterward. Screenshots/traces are local ignored test artifacts under `apps/web/test-results/`.
+
+`test:packages` packs the document/server tarballs, installs production
+dependencies in a disposable consumer outside the workspace, checks public
+exports/types and the executable, then runs the existing bridge browser cases
+against that installed server and its bundled assets. It does not publish or
+change editor settings. `pack:packages` builds tarballs without install acceptance.
 
 On Arch Linux, Playwright warns that it uses its Ubuntu fallback browser; browser installation or required system-library issues should be reported rather than treated as UI success. Chromium is test-only, not an application dependency.
 
@@ -81,7 +91,8 @@ On Arch Linux, Playwright warns that it uses its Ubuntu fallback browser; browse
 - `packages/document` — portable Zod schema, YAML source analysis, revision-bound bindings, session identities, semantic graphs and source-preserving content-edit preparation. No DOM, camera or LSP ownership.
 - `packages/language-server` — stdio language services and authenticated loopback HTTP/SSE bridge over the same attached document sessions.
 - `editors/zed` — minimal Rust/Wasm launcher for the configured TypeScript server, not a native renderer. No placeholder packages or published extension.
-- `turbo.json` — local build/task orchestration; no remote cache or publication configured. The installed Turbo docs were read before defining tasks.
+- `turbo.json` — local build/task orchestration, including web assets before the server's package-local preview copy; no remote cache. The installed Turbo docs were read before defining tasks.
+- `.github/workflows/npm-release.yml` — prepared npm verification/release flow; actual publishing needs package trust setup, a protected `npm` environment and an explicitly authorized matching release tag.
 
 The samples use explicit branch/cross edges, Markdown notes and an unresolved-thought example. The default is automatically positioned; the saved comparison example retains its authored coordinates. The data is invented, not Bastion Falls canon. Durable playground persistence, import/export, a published viewer API, full CLI/MCP graph editing and embedded Markdown editing assistance remain deferred. The current LSP offers diagnostics, definitions, document highlights, basic authored-ID completion and preview code actions; it is not a full editor-tooling implementation. Synthetic pointer/touch tests are not proof of physical comfort, large-graph performance or universal collision avoidance.
 

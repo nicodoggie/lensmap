@@ -13,9 +13,11 @@ not a published extension or npm release.
 **Recommended installation: use the dev-extension flow below.** Build from this
 checkout and keep the server path in workspace settings. A GitHub release, an
 extension-registry submission and an automatic runtime downloader are not
-required. Those distribution features and their release workflow are deferred
-until the integration is more mature; the current setup does not download a
-prebuilt Lensmap runtime or update it automatically.
+required. npm package preparation and an approval-gated npm release workflow are
+now available; see [package/release setup](npm-release.md). This does not mean
+the packages were published. Zed's automatic npm installer and extension-registry
+release flow remain deferred; the current extension does not download or update
+a prebuilt Lensmap runtime automatically.
 
 ## Build and configure
 
@@ -46,7 +48,9 @@ Re-run this command after moving the checkout or changing its Node installation.
    Keep the server's stdout dedicated to LSP; do not launch it as a background
    web daemon in a terminal and expect it to receive the editor buffer.
 
-The server chooses an available `127.0.0.1` port and serves the built viewer.
+The server chooses an available `127.0.0.1` port and serves the built viewer from
+its package-local `dist/preview` directory. The root build orders the web assets
+before the server's asset copy; `--assets PATH` remains a development override.
 Rebuild after source changes, then restart the language server to load the new
 server/viewer together. `pnpm dev` is the standalone playground, not the attached
 IDE preview. No real user editor settings are installed automatically by this

@@ -17,11 +17,11 @@ const { values } = parseArgs({
   },
 });
 const assets = resolve(
-  values.assets ?? resolve(import.meta.dirname, "../../../apps/web/dist"),
+  values.assets ?? resolve(import.meta.dirname, "preview"),
 );
 if (values.help) {
   process.stdout.write(
-    "Lensmap experimental language server + loopback preview\n\nUsage: lensmap-lsp --stdio [--assets PATH] [--zed EXECUTABLE]\n  --no-open          Return preview links without launching a browser\n  --zed-data-dir DIR  Target a private Zed profile for source reveal\n  --configure-zed    Print workspace settings for the local dev extension\n\nBuild first with pnpm build. Preview URLs/tokens are private per-run credentials;\nretrieve them through Lensmap's code actions or lensmap.session LSP command.\nEditor writes use revision checks/readback, not atomic compare-and-swap.\n",
+    "Lensmap experimental language server + loopback preview\n\nUsage: lensmap-lsp --stdio [--assets PATH] [--zed EXECUTABLE]\n  --assets PATH     Override the bundled browser preview assets\n  --no-open          Return preview links without launching a browser\n  --zed-data-dir DIR  Target a private Zed profile for source reveal\n  --configure-zed    Print workspace settings for the local dev extension\n\nInstalled packages include the browser preview. For source checkouts, run pnpm build.\nPreview URLs/tokens are private per-run credentials; retrieve them through\nLensmap's code actions or lensmap.session LSP command.\nEditor writes use revision checks/readback, not atomic compare-and-swap.\n",
   );
 } else if (values["configure-zed"]) {
   process.stdout.write(
@@ -103,7 +103,7 @@ if (values.help) {
     process.once("SIGINT", stop);
   } catch {
     process.stderr.write(
-      "Lensmap could not start. Run pnpm build and check the asset directory; see --help.\n",
+      "Lensmap could not start. Check the preview asset directory; rebuild source checkouts with pnpm build or reinstall the npm package. See --help.\n",
     );
     process.exitCode = 1;
   }

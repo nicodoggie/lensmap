@@ -3,6 +3,10 @@
   "tasks": {
     "dev": { "cache": false, "persistent": true },
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "@lensmap/language-server#build": {
+      "dependsOn": ["^build", "@lensmap/web#build"],
+      "outputs": ["dist/**"]
+    },
     "typecheck": { "dependsOn": ["^build", "^typecheck"], "outputs": [] },
     "test": { "dependsOn": ["^build"], "outputs": [] }
   }
