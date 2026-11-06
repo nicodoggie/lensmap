@@ -4,6 +4,11 @@ A text-first mind-map project exploring a **spatial magnification lens** for cyc
 
 This is a working TypeScript/React lens playground—not a restoration of the pruned scratch HTML and not the finished authoring tool. See [HANDOFF.md](HANDOFF.md) for canonical decisions, [docs/design.md](docs/design.md) for scope, and [the incomplete v1 schema](docs/schema-v1.md) for the current YAML format.
 
+See the [integration direction](docs/integration-direction.md) for the
+consolidated Zed/browser workflow, shared engine and agent API goals, qualified
+capabilities, and explicit limits. It is a design checkpoint, not an
+implementation plan.
+
 ## Run locally
 
 Prerequisites: Node **24.16+** and pnpm **12.15.0** (the pinned package manager).
