@@ -46,9 +46,9 @@ builds and preview do not include or serve this example directory.
    ordinary file links use **Open external link** and the editor's opener.
 
 To inspect prevention styling, select **Pier closed for repairs** and choose
-**Explore neighbourhood**. Its solid connectors end in T-bars beside **Board
-at this pier** and **Use the pier shelter**. The blocked thoughts remain visible
-and selectable; this is a described relationship, not an event simulator.
+**Explore neighbourhood**. Its solid connectors end in paired blocking bars beside
+**Board at this pier** and **Use the pier shelter**. The blocked thoughts remain
+visible and selectable; this is a described relationship, not an event simulator.
 
 Keep these files together: relative URLs resolve from the source map's location.
 Pasting this sample into the standalone playground does not give it a source

@@ -44,6 +44,23 @@ test("relation markers follow metadata for parallel references and loops", async
     /arrow/,
   );
   await expect(edge("prevents")).toHaveAttribute("marker-end", /bar/);
+  const blockingBars = await edge("prevents").evaluate((path) => {
+    const id = path.getAttribute("marker-end")?.match(/^url\(#(.+)\)$/)?.[1];
+    const marker = id ? document.getElementById(id) : null;
+    return Array.from(marker?.querySelectorAll("line") ?? []).map((line) => ({
+      x1: line.x1.baseVal.value,
+      x2: line.x2.baseVal.value,
+      y1: line.y1.baseVal.value,
+      y2: line.y2.baseVal.value,
+    }));
+  });
+  expect(blockingBars).toHaveLength(2);
+  expect(new Set(blockingBars.map((bar) => bar.x1)).size).toBe(2);
+  for (const bar of blockingBars) {
+    expect(bar.x1).toBe(bar.x2);
+    expect(bar.y2).toBeGreaterThan(bar.y1);
+  }
+  await expect(edge("prevents")).toHaveCSS("stroke-dasharray", "none");
   await expect(edge("optional")).toHaveAttribute("stroke-dasharray", "7 6");
   await expect(edge("connected")).not.toHaveAttribute("marker-end");
   await expect(edge("connected")).toHaveCSS("stroke-dasharray", "none");

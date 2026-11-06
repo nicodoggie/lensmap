@@ -103,7 +103,7 @@ For an entry authored under A with destination B:
 | Type omitted    | Connected, without a more specific claim   | Solid line; no endpoint markers                                                     |
 | `precedes`      | A comes before B in the described sequence | Solid line; arrowhead at B                                                          |
 | `follows`       | A comes after B in the described sequence  | Solid line; arrowhead at A                                                          |
-| `prevents`      | A rules out B                              | Solid line; blocking T-bar at B                                                     |
+| `prevents`      | A rules out B                              | Solid line; two parallel blocking bars at B                                         |
 | `optional`      | An optional connection or branch           | Dashed line; no endpoint markers                                                    |
 | `external_link` | An ordinary external resource              | Solid line without arrowheads; external-link icon on the destination thought        |
 | `map_link`      | A Lensmap destination                      | Solid line without arrowheads; distinctive swirly portal on the destination thought |

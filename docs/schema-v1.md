@@ -59,7 +59,7 @@ nodes:
 
 Link thoughts retain IDs, notes, positions and local connections. Type plus URL supplies an address fallback label when prose is omitted. References reuse a portal without redefining its URL or inheriting the new edge's type. An explicitly typed link reference must match the existing portal kind. Root link thoughts are allowed; other root relationship types are rejected because no incoming edge exists. Reject mixed references/content/URL overrides and URLs on ordinary relationship entries.
 
-Neutral edges are solid and unmarked regardless of nesting/reference syntax. Sequence arrows point toward the later item; `prevents` has a target blocking bar; `optional` is dashed. Portals use unarrowed connectors and destination icons. These conventions do not execute domain logic. See [the complete connection contract](default-connections.md) for activation, source-relative loading, anchors and history.
+Neutral edges are solid and unmarked regardless of nesting/reference syntax. Sequence arrows point toward the later item; `prevents` has two parallel blocking bars at the target; `optional` is dashed. Portals use unarrowed connectors and destination icons. These conventions do not execute domain logic. See [the complete connection contract](default-connections.md) for activation, source-relative loading, anchors and history.
 
 ## Validation and errors
 

@@ -857,13 +857,28 @@ export default function Viewer({
                       key={`bar-${branch}`}
                       id={`${scope}-bar-${branch}`}
                       viewBox="0 0 10 10"
-                      refX="5"
+                      refX="7"
                       refY="5"
                       markerWidth="8"
                       markerHeight="8"
                       orient="auto"
                     >
-                      <path d="M 5 0 L 5 10" stroke={colour} strokeWidth="2" />
+                      <line
+                        x1="2"
+                        x2="2"
+                        y1="0"
+                        y2="10"
+                        stroke={colour}
+                        strokeWidth="2"
+                      />
+                      <line
+                        x1="7"
+                        x2="7"
+                        y1="0"
+                        y2="10"
+                        stroke={colour}
+                        strokeWidth="2"
+                      />
                     </marker>
                   ))}
                 </defs>
@@ -1116,7 +1131,7 @@ export default function Viewer({
             )}
             <div className="legend">
               <span>━ connected</span>
-              <span>┄ optional · → sequence · ⊣ prevents</span>
+              <span>┄ optional · → sequence · ─|| prevents</span>
             </div>
           </footer>
         </div>
