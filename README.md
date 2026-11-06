@@ -4,10 +4,13 @@ A text-first mind-map project exploring a **spatial magnification lens** for cyc
 
 This is a working TypeScript/React lens playground—not a restoration of the pruned scratch HTML and not the finished authoring tool. See [HANDOFF.md](HANDOFF.md) for canonical decisions, [docs/design.md](docs/design.md) for scope, and [the incomplete v1 schema](docs/schema-v1.md) for the current YAML format.
 
-See the [integration direction](docs/integration-direction.md) for the
-consolidated Zed/browser workflow, shared engine and agent API goals, qualified
-capabilities, and explicit limits. It is a design checkpoint, not an
-implementation plan.
+The first **live Zed/browser integration** is available as a local development
+installation: [setup, usage and API](docs/zed-browser.md). It consumes unsaved
+editor buffers, retains valid maps across source errors, supports optional caret
+follow and explicit source reveal, and mediates bounded content edits with
+revision checks and real buffer readback. Editor application is **not atomic**.
+The [integration direction](docs/integration-direction.md) preserves the earlier
+design checkpoint and deferred goals.
 
 ## Run locally
 
@@ -64,10 +67,12 @@ On Arch Linux, Playwright warns that it uses its Ubuntu fallback browser; browse
 
 ## Workspace
 
-- `apps/web` — React + Vite app, pure lens/camera/clearance functions, versioned Zod schema, YAML parser/normalizer, radial layout with D3 subtree hulls and initial collision relaxation, sidebar playground and tests. The editable sample is `apps/web/src/sample.yaml`.
-- `packages/*` — reserved workspace glob only; no empty packages. Extract an embeddable viewer after the web interaction is qualified; language-server work follows that.
+- `apps/web` — React + Vite playground and canvas-first bridge shell sharing a controlled viewer, lens/camera/clearance functions and viewer-owned radial layout. The editable sample is `apps/web/src/sample.yaml`.
+- `packages/document` — portable Zod schema, YAML source analysis, revision-bound bindings, session identities, semantic graphs and source-preserving content-edit preparation. No DOM, camera or LSP ownership.
+- `packages/language-server` — stdio language services and authenticated loopback HTTP/SSE bridge over the same attached document sessions.
+- `editors/zed` — minimal Rust/Wasm launcher for the configured TypeScript server, not a native renderer. No placeholder packages or published extension.
 - `turbo.json` — local build/task orchestration; no remote cache or publication configured. The installed Turbo docs were read before defining tasks.
 
-The samples use explicit branch/cross edges, Markdown notes and an unresolved-thought example. The default is automatically positioned; the saved comparison example retains its authored coordinates. The data is invented, not Bastion Falls canon. Durable persistence, import/export, a public viewer API, language server and advanced editor tooling are not implemented. Synthetic pointer/touch tests are not proof of physical comfort, large-graph performance or universal collision avoidance.
+The samples use explicit branch/cross edges, Markdown notes and an unresolved-thought example. The default is automatically positioned; the saved comparison example retains its authored coordinates. The data is invented, not Bastion Falls canon. Durable playground persistence, import/export, a published viewer API, full CLI/MCP graph editing and embedded Markdown editing assistance remain deferred. The current LSP offers diagnostics, definitions, document highlights, basic authored-ID completion and preview code actions; it is not a full editor-tooling implementation. Synthetic pointer/touch tests are not proof of physical comfort, large-graph performance or universal collision avoidance.
 
 This folder is its own Git repository. Verified, meaningful milestones are checkpointed with local commits. Pushes, remote creation and publication require separate explicit approval.

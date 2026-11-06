@@ -227,6 +227,20 @@ test("chooser controls preview before travelling; navigation/source changes clea
   await page.keyboard.press("Shift+ArrowRight");
   await page.setViewportSize({ width: 390, height: 844 });
   // Resize invalidates captured bearings; re-enter deliberately at this viewport.
+  // Wait for ResizeObserver's projection update, not merely an absent chooser:
+  // absence can precede that asynchronous update and its cancellation.
+  await expect
+    .poll(() =>
+      map.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        const svg = element.querySelector("svg.connections");
+        return (
+          Number(svg?.getAttribute("width")) === bounds.width &&
+          Number(svg?.getAttribute("height")) === bounds.height
+        );
+      }),
+    )
+    .toBe(true);
   await expect(chooser).toHaveCount(0);
   await page.getByRole("button", { name: "Alpha", exact: true }).focus();
   await page.keyboard.press("Space");
@@ -241,6 +255,7 @@ test("chooser controls preview before travelling; navigation/source changes clea
     path: info.outputPath("connection-choices-narrow.png"),
     fullPage: true,
   });
+  await expect(chooser).toBeVisible();
   await chooser
     .getByRole("button", { name: "Cancel choice", exact: true })
     .click();

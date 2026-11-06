@@ -1,0 +1,10 @@
+id = "lensmap"
+name = "Lensmap (experimental)"
+version = "0.0.0"
+schema_version = 1
+authors = ["Lensmap contributors"]
+description = "Launch the local Lensmap TypeScript language server and browser bridge."
+
+[language_servers.lensmap]
+name = "Lensmap"
+language = "YAML"

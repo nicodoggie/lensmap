@@ -10,7 +10,8 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "check": "pnpm lint && turbo run test typecheck build",
-    "test:e2e": "pnpm build && playwright test --config apps/web/playwright.config.ts"
+    "test:e2e": "pnpm build && playwright test --config apps/web/playwright.config.ts",
+    "schema:export": "pnpm --filter @lensmap/document build && node packages/document/dist/export-schema.js schemas/lensmap.experimental-v1.schema.json"
   },
   "engines": {
     "node": ">=24.16.0"

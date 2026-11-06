@@ -30,18 +30,18 @@ authoring grammar, or rename fixtures.
 
 ## Capability findings
 
-| Boundary | Evidence and result | Limit |
-| --- | --- | --- |
-| Standalone `.lensmap` text file | Configured `file_types` to associate `lensmap` with YAML. Native editor displayed syntax highlighting, and a task reported the fixture language as `YAML`. | Does not establish schema diagnostics, embedded Markdown tooling, or Lensmap semantics. |
-| Full unsaved source | Recorder received the initial buffer through `textDocument/didOpen` and subsequent unsaved typing through incremental `textDocument/didChange`. Disk contents stayed unchanged. | Requires a real language-server attachment and revision-consistent analysis; a file watcher alone is insufficient. |
-| Explicit caret command | A named task bound with `task::Spawn` supplied the active file, row, column, language, and selection. | This is command-driven. See the separate automatic-signal follow-up below; coordinates and analysis must use the corresponding live source. |
-| Automatic caret signal | With `documentHighlightProvider` advertised, native arrow movement and mouse clicks generated position-bearing `textDocument/documentHighlight` requests without source edits. | Conditional language-feature requests, not an unconditional caret subscription; multiword selection suppressed the tested signal. |
-| Unsaved selection | Select-all followed by the task returned text identical to the live buffer reconstructed from LSP notifications, including unsaved edits. | A selection task is not automatic full-buffer synchronization. |
-| Reveal in source | Invoked the installed CLI with the private user-data directory, `--existing`, and `association.lensmap:3:5`. A subsequent task reported that exact file, row `3`, and column `5`. | This proves local CLI-to-editor navigation, not browser permission to launch a local process or preservation of viewer focus. |
-| Undoable buffer edit | A current-version `workspace/applyEdit` changed the live buffer without writing the file. One native Undo removed the server edit while retaining preceding human typing. | Multi-document atomicity, overlapping edits, redo, and sustained concurrent writers were not tested. |
-| Reject any stale revision | **Not supplied by the tested LSP path.** An edit naming revision `0` was accepted while the buffer was at revision `7`, and changed the live buffer. | The human change was in a different range; this demonstrates stale acceptance, not an overlapping-edit conflict policy. |
-| Trust the edit acknowledgment | **Not reliable as sole evidence in this build.** A nonexistent revision returned `applied: true` while the buffer remained unchanged. | Verify actual resulting source; do not treat the acknowledgment as a successful write receipt. |
-| Embedded React/SVG viewer | No general custom-pane/webview API found in inspected public extension docs and the installed-version extension trait. The webview extension request remained open when checked.[2][4][9] | No embedded viewer was demonstrated. This is not proof that a Zed core change or future API could never provide one. |
+| Boundary                        | Evidence and result                                                                                                                                                                       | Limit                                                                                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Standalone `.lensmap` text file | Configured `file_types` to associate `lensmap` with YAML. Native editor displayed syntax highlighting, and a task reported the fixture language as `YAML`.                                | Does not establish schema diagnostics, embedded Markdown tooling, or Lensmap semantics.                                                     |
+| Full unsaved source             | Recorder received the initial buffer through `textDocument/didOpen` and subsequent unsaved typing through incremental `textDocument/didChange`. Disk contents stayed unchanged.           | Requires a real language-server attachment and revision-consistent analysis; a file watcher alone is insufficient.                          |
+| Explicit caret command          | A named task bound with `task::Spawn` supplied the active file, row, column, language, and selection.                                                                                     | This is command-driven. See the separate automatic-signal follow-up below; coordinates and analysis must use the corresponding live source. |
+| Automatic caret signal          | With `documentHighlightProvider` advertised, native arrow movement and mouse clicks generated position-bearing `textDocument/documentHighlight` requests without source edits.            | Conditional language-feature requests, not an unconditional caret subscription; multiword selection suppressed the tested signal.           |
+| Unsaved selection               | Select-all followed by the task returned text identical to the live buffer reconstructed from LSP notifications, including unsaved edits.                                                 | A selection task is not automatic full-buffer synchronization.                                                                              |
+| Reveal in source                | Invoked the installed CLI with the private user-data directory, `--existing`, and `association.lensmap:3:5`. A subsequent task reported that exact file, row `3`, and column `5`.         | This proves local CLI-to-editor navigation, not browser permission to launch a local process or preservation of viewer focus.               |
+| Undoable buffer edit            | A current-version `workspace/applyEdit` changed the live buffer without writing the file. One native Undo removed the server edit while retaining preceding human typing.                 | Multi-document atomicity, overlapping edits, redo, and sustained concurrent writers were not tested.                                        |
+| Reject any stale revision       | **Not supplied by the tested LSP path.** An edit naming revision `0` was accepted while the buffer was at revision `7`, and changed the live buffer.                                      | The human change was in a different range; this demonstrates stale acceptance, not an overlapping-edit conflict policy.                     |
+| Trust the edit acknowledgment   | **Not reliable as sole evidence in this build.** A nonexistent revision returned `applied: true` while the buffer remained unchanged.                                                     | Verify actual resulting source; do not treat the acknowledgment as a successful write receipt.                                              |
+| Embedded React/SVG viewer       | No general custom-pane/webview API found in inspected public extension docs and the installed-version extension trait. The webview extension request remained open when checked.[2][4][9] | No embedded viewer was demonstrated. This is not proof that a Zed core change or future API could never provide one.                        |
 
 The task route and file association are documented host mechanisms, now also
 exercised natively.[1][6] The inspected extension interface supplies
@@ -55,11 +55,11 @@ and logged its responses. Buffer effects were checked through subsequent LSP
 changes and a native selected-text task, rather than inferred from
 acknowledgments.
 
-| Request | Requested version | Latest observed version before request | Response | Observed buffer effect |
-| --- | --- | --- | --- | --- |
-| Current edit | `5` | `5` | `applied: true` | Function name changed; native Undo restored it without removing human typing. |
-| Older retained version | `0` | `7` | `applied: true` | Function name changed despite the stale document revision. |
-| Nonexistent version | `99999999` | `8` | `applied: true` | Buffer remained unchanged. |
+| Request                | Requested version | Latest observed version before request | Response        | Observed buffer effect                                                        |
+| ---------------------- | ----------------- | -------------------------------------- | --------------- | ----------------------------------------------------------------------------- |
+| Current edit           | `5`               | `5`                                    | `applied: true` | Function name changed; native Undo restored it without removing human typing. |
+| Older retained version | `0`               | `7`                                    | `applied: true` | Function name changed despite the stale document revision.                    |
+| Nonexistent version    | `99999999`        | `8`                                    | `applied: true` | Buffer remained unchanged.                                                    |
 
 The pinned implementation passes versioned edits through its LSP edit conversion
 and creates undo transactions. Its `on_lsp_workspace_edit` handler logs
@@ -109,15 +109,15 @@ and returned empty highlight results while recording actual client requests.
 Zed sent `textDocument/documentHighlight` positions automatically after caret
 movement, with no hotkey command, saving, or source edits required.
 
-| Native movement case | Observed zero-based UTF-16 position | Result |
-| --- | --- | --- |
-| Move into an identifier | Line `2`, character `9` | Expected request received |
-| Move one character within that word | Line `2`, character `10` | Expected request received |
-| Move into indentation | Line `2`, character `2` | Expected request received |
-| Move to a blank line | Line `3`, character `0` | Expected request received |
-| Move to punctuation | Line `2`, character `14` | Expected request received |
-| Move within a comment containing non-ASCII text and emoji | Line `4`, character `25` | Expected request received |
-| Click another source line | Line `5`, character `11` | Request received on the clicked line |
+| Native movement case                                      | Observed zero-based UTF-16 position | Result                               |
+| --------------------------------------------------------- | ----------------------------------- | ------------------------------------ |
+| Move into an identifier                                   | Line `2`, character `9`             | Expected request received            |
+| Move one character within that word                       | Line `2`, character `10`            | Expected request received            |
+| Move into indentation                                     | Line `2`, character `2`             | Expected request received            |
+| Move to a blank line                                      | Line `3`, character `0`             | Expected request received            |
+| Move to punctuation                                       | Line `2`, character `14`            | Expected request received            |
+| Move within a comment containing non-ASCII text and emoji | Line `4`, character `25`            | Expected request received            |
+| Click another source line                                 | Line `5`, character `11`            | Request received on the clicked line |
 
 All seven collapsed-caret cases matched. Disk bytes and the live source stayed
 unchanged. A native selection spanning `Alpha thought` produced no highlight

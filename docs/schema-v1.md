@@ -2,7 +2,7 @@
 
 `version: v1` selects the current working schema. **v1 is incomplete, not a frozen compatibility promise.** We can add or refine fields within this experimental version while its authoring semantics are being tried. It is independent of the application's package version.
 
-The Zod definition is `apps/web/src/document/v1/schema.ts`. `DocumentSchema` validates structure; `parseSource` then checks document-wide IDs/references and constructs the graph. Keeping schemas independent of YAML parsing, layout and rendering prepares for reuse without creating an empty package now.
+The owning Zod definition is `packages/document/src/v1/schema.ts`; the old web path re-exports it for compatibility. `DocumentSchema` validates structure; `DocumentSession` checks document-wide IDs/references and constructs semantic graphs and source bindings. Layout belongs to the viewer. `pnpm schema:export` generates `schemas/lensmap.experimental-v1.schema.json` from that Zod input definition; representative Ajv parity tests cover content-field presence, nonblank IDs, strict objects and recursive entries. Duplicate IDs and unknown references remain semantic checks, not JSON Schema rules. This local export does not freeze a public schema URL or compatibility contract.
 
 ## Current shape
 
@@ -48,4 +48,4 @@ Apply is transactional from the UI's perspective: parse/validate/normalize/layou
 
 ## Still incomplete
 
-Document metadata/frontmatter, richer edge metadata, relative coordinates, heading anchors, migration rules, import/export, durable saving, embedded Markdown editing assistance and ID completion are not yet defined or implemented. A textarea rendering YAML is not a language server. See the editable `apps/web/src/sample.yaml` for the current playground input.
+Document metadata/frontmatter, richer edge metadata, relative coordinates, heading anchors, migration rules, import/export, durable playground saving and embedded Markdown editing assistance remain incomplete. The attached language server now offers basic authored-ID completion in valid source, independently of the standalone textarea. See the editable `apps/web/src/sample.yaml` for playground input and [Zed setup](zed-browser.md) for the editor bridge.

@@ -1,15 +1,18 @@
-import { useState } from "react";
 import Markdown from "react-markdown";
-import { parseSource } from "./document/parse";
 import { type GraphData, type GraphNode, label } from "./graph";
-import sampleSource from "./sample.yaml?raw";
 
 interface Props {
   graph: GraphData;
   active?: GraphNode;
   onFocus: (key: string) => void;
   onFragment: (id: string) => void;
-  onApply: (graph: GraphData) => void;
+  source: string;
+  applied: string;
+  error: string;
+  status: string;
+  onSourceChange: (source: string) => void;
+  onApply: () => void;
+  onLoadSample: () => void;
 }
 
 export default function Sidebar({
@@ -17,12 +20,14 @@ export default function Sidebar({
   active,
   onFocus,
   onFragment,
+  source,
+  applied,
+  error,
+  status,
+  onSourceChange,
   onApply,
+  onLoadSample,
 }: Props) {
-  const [source, setSource] = useState(sampleSource);
-  const [applied, setApplied] = useState(sampleSource);
-  const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
   const outgoing = graph.edges.filter((edge) => edge.from === active?.key);
 
   return (
@@ -94,18 +99,7 @@ export default function Sidebar({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            const result = parseSource(source);
-            if (!result.ok) {
-              setError(result.error);
-              setStatus("");
-              return;
-            }
-            onApply(result.graph);
-            setApplied(source);
-            setError("");
-            setStatus(
-              `Applied ${result.graph.nodes.length} thoughts and ${result.graph.edges.length} connections.`,
-            );
+            onApply();
           }}
         >
           <label className="source-label" htmlFor="yaml-source">
@@ -116,20 +110,11 @@ export default function Sidebar({
             aria-describedby="source-help source-lifetime"
             spellCheck={false}
             value={source}
-            onChange={(event) => setSource(event.target.value)}
+            onChange={(event) => onSourceChange(event.target.value)}
           />
           <div className="editor-actions">
             <button type="submit">Apply YAML</button>
-            <button
-              type="button"
-              onClick={() => {
-                setSource(sampleSource);
-                setError("");
-                setStatus(
-                  "Sample loaded into the draft. Apply YAML to change the map.",
-                );
-              }}
-            >
+            <button type="button" onClick={onLoadSample}>
               Load sample
             </button>
           </div>

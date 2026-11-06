@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "v1"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/$defs/__schema0"
+          }
+        ]
+      }
+    }
+  },
+  "required": ["version", "nodes"],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "summary": {
+              "type": ["string", "null"]
+            },
+            "full_text": {
+              "type": ["string", "null"]
+            },
+            "position": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            },
+            "connections": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema1"
+              }
+            }
+          },
+          "required": ["summary"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "summary": {
+              "type": ["string", "null"]
+            },
+            "full_text": {
+              "type": ["string", "null"]
+            },
+            "position": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            },
+            "connections": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema1"
+              }
+            }
+          },
+          "required": ["full_text"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "node_id": {
+              "type": "string",
+              "pattern": "\\S"
+            }
+          },
+          "required": ["node_id"],
+          "additionalProperties": false
+        },
+        {
+          "$ref": "#/$defs/__schema0"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema1"
+          }
+        }
+      ]
+    }
+  },
+  "title": "Lensmap experimental v1",
+  "$comment": "Generated from the owning Zod input schema. Not a public compatibility promise; document-wide IDs/references are checked by the engine."
+}

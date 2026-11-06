@@ -8,6 +8,88 @@ Live setup: Node `v24.16.0`, pnpm `12.15.0`. Pinned workspace tools/dependencies
 
 This is a fresh TypeScript lens experiment. The pruned scratch file was not moved or restored; historical render activity was located but final file-byte equivalence was not established.
 
+## First Zed/browser integration (2026-11-06)
+
+Current setup and API boundaries: [Zed + browser preview](zed-browser.md).
+This section supersedes earlier statements below that no LSP/bridge exists;
+those sections retain their historical evidence rather than being rewritten.
+
+- Frozen-lockfile installation passed for the root, web, document and language-server
+  workspace. `pnpm check` passed with **64 unit tests in 11 suites**, TypeScript,
+  Biome and all three package builds. Seven informational template-style notices
+  in runtime tests are non-blocking; no errors or warnings remain. The generated
+  schema's validation structure matches the owning Zod input export, with only
+  descriptive `title`/`$comment` annotations added by the exporter.
+- Final `pnpm test:e2e` passed **21 Chromium tests**, no skips, against built
+  assets and a separately compiled stdio server. Earlier full runs intermittently
+  timed out after the narrow chooser screenshot. Resize instrumentation showed
+  that a viewport-driven projection update dismisses a choice; the test had
+  waited only for chooser absence before re-entering, not for that asynchronous
+  update. It now waits for rendered SVG dimensions to match the map, and also
+  checks that the chooser survives the screenshot. Four two-worker focused
+  repetitions and the full two-worker suite passed. Diagnostic instrumentation
+  was removed; no production workaround or weakened assertion was added. This
+  is bounded evidence for the synchronization repair, not universal timing proof.
+- The two new compiled-runtime/browser cases exercise unsaved source reaching
+  the viewer, unchanged geometry/zoom/surviving selection on prose edits,
+  invalid-source last-map retention and visible errors, recovery, caret following
+  without stealing browser control focus, no recenter for movement within one
+  thought, explicit mediated reveal, unchanged disk and disconnected last-map
+  retention. The test host simulates editor application/readback; this is not
+  described as native editor proof.
+- Separately, installed **Zed 1.27.0** ran with a disposable profile, private
+  display/session bus and synthetic `.lensmap` workspace. Native typing changed
+  Alpha to Alpha human without saving and updated the actual browser map while
+  retaining its key. An invalid line kept that map visibly stale; removing it
+  recovered live analysis. Moving the native caret to Beta followed it in the
+  map while X11 keyboard focus remained on the same Zed window.
+- A real `/api/content` edit returned `confirmed` after native Zed `didChange`
+  readback and rendered Beta agent. One native Undo restored Beta while retaining
+  Alpha human. Browser **Reveal source** then reached the exact native file,
+  row **6**, column **5**, with the task reporting language **YAML**. Disk bytes
+  remained unchanged throughout. The capture task initially failed because it
+  referenced an unavailable selected-text variable at a collapsed caret; the
+  unused variable was removed, not the reveal assertion. A restarted profile
+  also restored old dirty buffers; those synthetic changes were explicitly
+  discarded before the successful baseline run, not saved over the fixture.
+- The native recorder relays actual framed editor/server messages and privately
+  retrieves only session discovery; it does not substitute graph responses or
+  synthesize editor `didChange`/`applyEdit` replies. Its private evidence lives
+  under the configured prunable scratch root, not in the repository. Desktop
+  native editor/browser captures and final desktop/430 px bridge captures were
+  inspected. The narrow inspector stacks beneath the map and controls remain
+  reachable; small peripheral labels are still a limitation.
+- Process cleanup was read back: the owned native Zed group, Xvfb and LSP PIDs
+  no longer existed, and that run's HTTP port refused a connection. No real
+  editor profile/settings, sibling project, account configuration or saved user
+  source was changed. The Zed extension passed `cargo check --locked` and a
+  release `wasm32-wasip1` build; build trees and Wasm output stay ignored.
+- Focused engine tests cover shorthand/rich/block-scalar edits, null/empty
+  content, comment/subtree preservation, recursive placeholders, references,
+  alias limitations, UTF-16 positions, snapshot isolation and schema parity.
+  The owner reproduced cross-link keys changing after an unrelated sibling
+  insertion, then keyed them by stable endpoints and parallel occurrence;
+  that RED/GREEN regression retains distinct parallel keys. Perfect identity
+  after arbitrary moves/ambiguous duplication is not claimed.
+- Runtime tests exercise Host/Origin/auth rejection, current revision bindings,
+  incremental UTF-16 synchronization, invalid-source retention, document closure,
+  stale base rejection, serialized writes, rejection versus unconfirmed readback
+  and HTTP cleanup on stdio EOF. Versioned editor application remains explicitly
+  **non-atomic**; concurrency/OS portability, physical motion comfort, large-graph
+  performance, full agent graph-editing and a published embedding API are not
+  qualified by this milestone.
+- Independent static spec review found the same-URI/same-revision reopen cache
+  defect. The owner reproduced it in Chromium before repair: the status was Live
+  but the new content was absent. Detached layout/caret/focus state is now pruned,
+  and equal-revision cache reuse also checks the complete semantic graph. The
+  regression passes both detach/reopen and direct replacement without an
+  intermediate detach event. Independent quality/security review included this
+  repair and found no actionable issues; it verified all 74 frozen source/support
+  hashes. Parent readback confirmed that production source remains identical.
+  The later chooser change is test-only synchronization, reviewed by the parent
+  with focused/full browser evidence; it is not represented as part of the
+  earlier frozen review. Both reviewers used static reads, not fresh runtime proof.
+
 ## Fixed-origin connection preview (2026-11-06)
 
 - `pnpm exec biome check --write . && pnpm check && pnpm test:e2e && git diff --check` passed: **45 unit tests in seven suites and 18 Chromium tests**, no skips; Biome checked 53 files and TypeScript/Vite passed. The existing build chunk-size advisory remains unsuppressed. No dependency, schema, sample, authored layout, projection, clearance or Turbo changes.

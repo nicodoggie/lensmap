@@ -1,0 +1,82 @@
+.bridge-shell {
+  min-height: 100dvh;
+}
+.bridge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #35434f;
+  background: #16212b;
+}
+.bridge-bar strong {
+  color: #a9d7d2;
+  font-size: 18px;
+}
+.bridge-bar label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+.bridge-bar select {
+  color: inherit;
+  background: #202c38;
+  border: 1px solid #374451;
+  border-radius: 6px;
+  padding: 7px;
+  max-width: min(280px, 90vw);
+}
+.bridge-bar [role="status"] {
+  margin-left: auto;
+  font-size: 12px;
+  color: #abc4c8;
+}
+.bridge-shell > main {
+  max-width: none;
+  padding: 14px 20px;
+}
+.bridge-shell .masthead {
+  display: none;
+}
+.workspace.canvas-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+.bridge-shell .map {
+  height: clamp(440px, 77vh, 1100px);
+}
+.bridge-notice,
+.bridge-errors {
+  margin: 0;
+  padding: 8px 20px;
+  background: #342c24;
+  color: #f7c46c;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.bridge-errors {
+  max-height: 160px;
+  overflow: auto;
+}
+.bridge-errors p {
+  margin: 0;
+}
+.bridge-empty {
+  padding: 48px 24px;
+  max-width: 760px;
+  margin: auto;
+}
+@media (max-width: 700px) {
+  .bridge-bar {
+    gap: 8px;
+    padding: 10px;
+  }
+  .bridge-bar [role="status"] {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+  .bridge-shell > main {
+    padding: 10px;
+  }
+}

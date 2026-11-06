@@ -7,3 +7,5 @@ playwright-report/
 .env
 .env.*
 !.env.example
+editors/zed/target/
+editors/zed/extension.wasm

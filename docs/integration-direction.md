@@ -2,6 +2,12 @@
 
 ## Status and purpose
 
+**Historical design checkpoint:** the capability table below records the state
+before the first integration implementation. Current local development setup
+and implemented boundaries are in [Zed + browser preview](zed-browser.md);
+executed evidence is in [verification](verification.md). Deferred goals here
+remain deferred, not silently accepted new scope.
+
 Design checkpoint from the folded IDE/API discussions and subsequent host
 qualification on 2026-11-06. This records desired behavior, feasibility, and
 remaining work. It is **not an implementation plan, a frozen public grammar,
@@ -39,14 +45,14 @@ manipulate renderer internals or automate dragging nodes.
 Keep Lensmap semantics host-independent, rather than building a generic graph
 platform or forcing every host through an LSP.
 
-| Component | Owns |
-| --- | --- |
-| Source document/tree | Authoritative text, YAML syntax/CST, authored structure and source locations, including incomplete input |
-| Document engine and bindings | Validation, normalization, stable thought/edge identities, authored-name lookup, definition/reference bindings, semantic graph snapshots and change comparison |
-| Viewer | Computed layout and measurements, rendering, camera/zoom, selection, lens projection and temporary neighbourhood geometry |
-| Language-service adapter | Diagnostics, completion and associated semantic language features using the shared analysis |
-| Browser/host bridge | Viewer updates, caret/source navigation, host lifecycle and source-edit mediation |
-| API, CLI and optional MCP adapters | Focused reads and semantic edit operations using the same engine and revision rules |
+| Component                          | Owns                                                                                                                                                           |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source document/tree               | Authoritative text, YAML syntax/CST, authored structure and source locations, including incomplete input                                                       |
+| Document engine and bindings       | Validation, normalization, stable thought/edge identities, authored-name lookup, definition/reference bindings, semantic graph snapshots and change comparison |
+| Viewer                             | Computed layout and measurements, rendering, camera/zoom, selection, lens projection and temporary neighbourhood geometry                                      |
+| Language-service adapter           | Diagnostics, completion and associated semantic language features using the shared analysis                                                                    |
+| Browser/host bridge                | Viewer updates, caret/source navigation, host lifecycle and source-edit mediation                                                                              |
+| API, CLI and optional MCP adapters | Focused reads and semantic edit operations using the same engine and revision rules                                                                            |
 
 Basic YAML syntax colouring and semantic language services are separate. The
 LSP is not a camera protocol. It can share a process and document session with
@@ -136,10 +142,11 @@ process can own the endpoint lifecycle; no separate permanent daemon is needed.
   as native undoable changes. Saved-file checking plus atomic replacement does
   not create a universal cross-process compare-and-swap.
 - Zed's tested LSP edit path does not enforce strict whole-document revision
-  equality at application time. Do not claim that a server-side check closes
-  the race, or that `applied: true` proves the edit occurred. Strict unattended
-  IDE writes remain unresolved; proposed patches/explicit application are the
-  fallback if the adapter cannot enforce the required contract.
+  equality at application time. Nico explicitly accepted that contention caveat
+  for the initial implementation. Keep base-revision checks, serialize owned
+  writes and verify actual buffer readback, but do not claim atomic application
+  or treat `applied: true` as confirmation. A concurrent human edit may be
+  rebased by Zed; report unconfirmed outcomes rather than silently retrying.
 - OT, CRDTs and collaborative automatic merging are not first-iteration scope.
 
 ## What is feasible, and what that evidence actually establishes
@@ -148,21 +155,21 @@ The native host checks used installed Zed 1.27.0 on an isolated Linux/X11
 display. Detailed cases, source pin and limitations are in the
 [Zed feasibility record](zed-integration-probe.md).
 
-| Capability | Evidence/status | Remaining boundary |
-| --- | --- | --- |
-| Existing lens playground and navigation | Implemented in the web app | Not the new live IDE integration; navigation refinements are deferred |
-| `.lensmap` treated as YAML in Zed | Native file-association check passed | Lensmap packaging and semantic language features are not shipped |
-| Unsaved document synchronization | Native LSP open/change check passed | Must connect to the real Lensmap engine/session |
-| Explicit caret command | Native task supplied file/position/selection | Bind position to the correct source revision and viewer |
-| Automatic caret signal | Native document-highlight requests matched seven keyboard/mouse cases | Conditional signal, not an unconditional cursor stream; multiword selection suppressed it |
-| Reveal in source | Native CLI reached the requested file/line/column | Browser-to-host command mediation and policy still need implementation |
-| Undoable buffer edits | Native current-version edit and undo passed | Strict stale rejection and multi-document/concurrent behavior are not proved |
-| Strict editor-buffer compare-and-swap | Not provided by the tested LSP path | Older revisions were accepted; a nonexistent revision still received a true acknowledgment without a source change |
-| Generated structural JSON Schema | Conversion of the actual recursive Zod input schema succeeds; rechecked for this summary | Current custom refinements for nonblank IDs and content-field presence are absent from the export |
-| Ranged source tree and persistent bindings | Parser support for ranged syntax was investigated; the current pipeline drops it | Binding retention and identity reconciliation must be built |
-| Combined LSP/localhost/browser workflow | Technically supported direction; separate host primitives qualified | The complete source-to-viewer loop has not been implemented or exercised |
-| Shared API/CLI/MCP operations | Feasible architectural direction | No maintained semantic edit API or MCP adapter exists yet |
-| Ordinary-extension embedded webview | No usable public route established | Not a dependency of the selected initial browser workflow |
+| Capability                                 | Evidence/status                                                                          | Remaining boundary                                                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Existing lens playground and navigation    | Implemented in the web app                                                               | Not the new live IDE integration; navigation refinements are deferred                                              |
+| `.lensmap` treated as YAML in Zed          | Native file-association check passed                                                     | Lensmap packaging and semantic language features are not shipped                                                   |
+| Unsaved document synchronization           | Native LSP open/change check passed                                                      | Must connect to the real Lensmap engine/session                                                                    |
+| Explicit caret command                     | Native task supplied file/position/selection                                             | Bind position to the correct source revision and viewer                                                            |
+| Automatic caret signal                     | Native document-highlight requests matched seven keyboard/mouse cases                    | Conditional signal, not an unconditional cursor stream; multiword selection suppressed it                          |
+| Reveal in source                           | Native CLI reached the requested file/line/column                                        | Browser-to-host command mediation and policy still need implementation                                             |
+| Undoable buffer edits                      | Native current-version edit and undo passed                                              | Strict stale rejection and multi-document/concurrent behavior are not proved                                       |
+| Strict editor-buffer compare-and-swap      | Not provided by the tested LSP path                                                      | Older revisions were accepted; a nonexistent revision still received a true acknowledgment without a source change |
+| Generated structural JSON Schema           | Conversion of the actual recursive Zod input schema succeeds; rechecked for this summary | Current custom refinements for nonblank IDs and content-field presence are absent from the export                  |
+| Ranged source tree and persistent bindings | Parser support for ranged syntax was investigated; the current pipeline drops it         | Binding retention and identity reconciliation must be built                                                        |
+| Combined LSP/localhost/browser workflow    | Technically supported direction; separate host primitives qualified                      | The complete source-to-viewer loop has not been implemented or exercised                                           |
+| Shared API/CLI/MCP operations              | Feasible architectural direction                                                         | No maintained semantic edit API or MCP adapter exists yet                                                          |
+| Ordinary-extension embedded webview        | No usable public route established                                                       | Not a dependency of the selected initial browser workflow                                                          |
 
 The current implementation still generates keys from structural paths in
 `apps/web/src/document/parse.ts` and calls layout during parsing. Persistent
@@ -174,10 +181,10 @@ properties to assume from the existing `GraphData` type.
 The implementation backlog is the real engine/viewer separation, bindings and
 identity reconciliation, faithful schema export, live valid/stale updates,
 Zed packaging and browser bridge, caret/reveal integration, and shared
-revision-aware semantic APIs with CLI/MCP adapters. The editor-write safety
-boundary must be resolved or honestly degraded before claiming unattended
-agent editing. Exact first-release language features and interface contracts
-still need an implementation design.
+revision-aware semantic APIs with CLI/MCP adapters. The initial write path may
+proceed with the explicitly accepted non-atomic editor contention limitation.
+The executing first-milestone contract is
+[the Zed/browser integration plan](plans/zed-browser-integration.md).
 
 A useful preview acceptance milestone is: edit an unsaved `.lensmap` in Zed;
 the browser updates after valid analysis, preserves view state on ordinary
