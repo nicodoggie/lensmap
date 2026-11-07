@@ -11,3 +11,4 @@ playwright-report/
 editors/zed/target/
 editors/zed/extension.wasm
 artifacts/
+*.tgz
