@@ -906,9 +906,12 @@ export default function Viewer({
                     x: from.x + (dx / distance) * nodeRadius * from.scale,
                     y: from.y + (dy / distance) * nodeRadius * from.scale,
                   };
+                  // Unmarked targets meet the outline; only decorations need space.
+                  const targetRadius =
+                    nodeRadius * to.scale + (appearance.end ? 7 : 0);
                   const end = {
-                    x: to.x - (dx / distance) * (nodeRadius * to.scale + 7),
-                    y: to.y - (dy / distance) * (nodeRadius * to.scale + 7),
+                    x: to.x - (dx / distance) * targetRadius,
+                    y: to.y - (dy / distance) * targetRadius,
                   };
                   const lane = lanes.get(edge.key);
                   let bend =

@@ -32,11 +32,16 @@ export default function NeighbourhoodContinuations({
     const target = byKey.get(continuation.edge.to);
     if (!point || !origin || !source || !target) return [];
     const incoming = continuation.edge.to === continuation.at;
+    const appearance = connectionAppearance(
+      continuation.edge.type,
+      incoming ? "incoming" : "outgoing",
+    );
     const angle =
       Math.atan2(point.y - origin.y, point.x - origin.x) + continuation.offset;
     const ux = Math.cos(angle),
       uy = Math.sin(angle);
-    const radius = nodeRadius * point.scale + (incoming ? 7 : 3);
+    const marked = incoming ? appearance.end : appearance.start;
+    const radius = nodeRadius * point.scale + (marked ? (incoming ? 7 : 3) : 0);
     const near = { x: point.x + ux * radius, y: point.y + uy * radius };
     const far = {
       x: near.x + ux * 70 * point.scale,
@@ -46,6 +51,7 @@ export default function NeighbourhoodContinuations({
     return [
       {
         ...continuation,
+        appearance,
         incoming,
         near,
         far,
@@ -83,10 +89,7 @@ export default function NeighbourhoodContinuations({
         ))}
       </defs>
       {segments.map((segment) => {
-        const appearance = connectionAppearance(
-          segment.edge.type,
-          segment.incoming ? "incoming" : "outgoing",
-        );
+        const appearance = segment.appearance;
         const edgeClass = `edge continuation ${segment.edge.kind} ${previewEdges.has(segment.edge.key) ? "connection-preview" : ""}`;
         const painted = (
           <path
