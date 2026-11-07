@@ -1,21 +1,38 @@
 # npm package preparation and releases
 
-## Preparing the Astro cohort
+## Published Astro cohort (0.2.1)
 
-The current source target is **0.2.1** for `@lensmap/document`,
-`@lensmap/language-server`, `@lensmap/astro-loader` and `@lensmap/starlight`.
-This is an in-progress experimental release, not a claim of npm publication.
-The new Astro packages must pass native packed-consumer acceptance in addition
-to the existing runtime install/browser smoke before publication. See the
-[shipping plan](plans/2026-11-07-astro-packages.md) for scope and pending evidence.
+`@lensmap/document`, `@lensmap/language-server`, `@lensmap/astro-loader` and
+`@lensmap/starlight` are published at **0.2.1**, with **latest** pointing to that
+version for all four packages. They remain experimental packages. Publication
+and registry-only consumption were verified on **2026-11-07** against retained
+tarballs from source commit `ba247954d3b8a20dc740229fca2bbbcefa7a7f85`.
+See the [shipping plan](plans/2026-11-07-astro-packages.md) for the original scope.
+
+The public registry's package identities, versions, dependencies and SHA512
+integrities matched the qualified artifacts; all four downloaded tarballs
+matched the retained bytes exactly. A fresh anonymous, registry-only production
+install passed public exports, native Astro rendering/MDX/assets, native
+Starlight responsive and no-JavaScript reading, the installed CLI/generated
+settings, and all four installed-server browser bridge tests. No workspace
+aliases were consumed. This is not fresh native Zed managed-download acceptance.
+
+Local ignored evidence is retained under `artifacts/npm/release-0.2.1-latest/`:
+`manifest.json` identifies the source and original tarballs,
+`registry-consumption.json` records the public-registry result, and
+`registry-qualification.log` contains the actual install/native/browser output.
+Downloaded registry tarballs and consumer screenshots are retained alongside
+those receipts. Pre-publication packed-consumer qualification is recorded in
+`artifacts/checkpoints/latest-0.2.1/qualification.log`.
 
 Publish directly to **latest**. Nico selected this simpler release policy: no
-`next` staging channel or separate promotion step for routine releases. The new
-package records require their own authorized bootstrap and trusted-publisher
-configuration; the existing runtime packages' OIDC configuration does not
-authorize a newly named package. Local npm authentication returned `E401`
-during preparation. No credentials or account settings are installed by the
-package checks.
+`next` staging channel or separate promotion step for routine releases. This
+release used qualified pnpm tarballs, native npm staging and human approval;
+it does not establish OIDC publication for the new Astro package names. Their
+trusted-publisher configuration still needs separate setup/qualification; the
+existing runtime packages' OIDC configuration does not authorize a newly named
+package. Do not push `npm-v0.2.1` to replay an already completed publication.
+No credentials or account settings are installed by the package checks.
 
 **Stage only the qualified tarballs, never workspace directories.** `npm stage
 publish` is npm's native deferred-approval mechanism, not the `next` dist-tag.
@@ -27,17 +44,19 @@ npm stage publish artifacts/npm/lensmap-astro-loader-0.2.1.tgz \
   --access public --tag latest --registry=https://registry.npmjs.org/
 ```
 
-`pnpm pack`
-rewrites `workspace:*` dependencies to exact release versions; staging a source
-directory with npm bypasses that rewriting. The approved Astro/Starlight 0.2.0
-directory stages retained `workspace:*`, so 0.2.1 replaces them with correctly
-packed dependencies. Already-published versions are not overwritten.
+`pnpm pack` rewrites `workspace:*` dependencies to exact release versions inside
+the tarball while leaving development manifests unchanged. npm does not
+automatically reuse an existing `.tgz`: pass its path explicitly to `npm publish`
+or `npm stage publish`. A bare npm publication repacks the source directory and
+bypasses pnpm's rewriting. The approved Astro/Starlight 0.2.0 directory stages
+retained `workspace:*`; 0.2.1 replaces them with correctly packed dependencies.
+Already-published versions are not overwritten.
 
-## Last verified npm release
+## Earlier runtime-only release (0.1.1)
 
-`@lensmap/document` and `@lensmap/language-server` are published at **0.1.1**,
-with both **next** and **latest** pointing to that version. They remain
-experimental packages. Downloaded registry tarballs matched the retained
+`@lensmap/document` and `@lensmap/language-server` were published at **0.1.1**,
+with both **next** and **latest** pointing to that version at the time.
+Downloaded registry tarballs matched the retained
 CI-verified bytes, including the qualified TypeScript declarations.
 OIDC publication and OIDC dist-tag promotion are now exercised for both packages.
 The immutable source tag is `npm-v0.1.1` at
