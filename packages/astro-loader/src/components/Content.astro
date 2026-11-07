@@ -1,0 +1,20 @@
+---
+import type { SemanticGraph } from "@lensmap/document";
+
+interface Props {
+  graph: SemanticGraph;
+  entry?: unknown;
+  authoredFrontmatter: Record<string, unknown>;
+  executable: boolean;
+}
+const { graph, entry } = Astro.props;
+const rendered = await Promise.all(
+  graph.nodes.map(async (node) => ({
+    node,
+    html: await Astro.slots.render(node.key, [entry]),
+  })),
+);
+---
+<section data-static-thoughts>
+  {rendered.map(({ node, html }) => <section data-thought={node.key}><h2>{node.title}</h2><div set:html={html} /></section>)}
+</section>

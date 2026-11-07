@@ -1,0 +1,9 @@
+---
+import Default from "@astrojs/starlight/components/PageSidebar.astro";
+import Inspector from "@lensmap/starlight/components/LiveInspector.astro";
+import MobileThoughts from "@lensmap/starlight/components/MobileThoughts.astro";
+import Shell from "@lensmap/starlight/components/SidebarShell.astro";
+
+const isMap = Astro.locals.starlightRoute.entry.filePath?.endsWith(".lensmap");
+---
+{isMap ? <Shell><p slot="context-panels" data-host-panel>Host metadata panel</p><Inspector slot="inspector" /><MobileThoughts slot="mobile-inspector" /><p slot="mobile-panels" data-mobile-panel>Independent host panel</p></Shell> : <Default {...Astro.props} />}

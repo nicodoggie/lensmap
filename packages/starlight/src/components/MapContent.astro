@@ -1,0 +1,36 @@
+---
+import type { SemanticGraph } from "@lensmap/document";
+import { layoutSemanticGraph } from "../layout.js";
+import ViewerHost from "../ViewerHost.js";
+import "../ViewerHost.css";
+
+interface Props {
+  graph: SemanticGraph;
+  entry?: unknown;
+  authoredFrontmatter: Record<string, unknown>;
+  executable: boolean;
+  inspectorId?: string;
+}
+const { graph: semantic, executable, inspectorId = "default" } = Astro.props;
+const entry = Astro.props.entry ?? Astro.locals.starlightRoute?.entry;
+const graph = layoutSemanticGraph(semantic);
+const rendered = Object.fromEntries(
+  await Promise.all(
+    graph.nodes.map(async (node) => [
+      node.key,
+      String((await Astro.slots.render(node.key, [entry])) ?? ""),
+    ]),
+  ),
+);
+// Only prepared prose + public graph reach the island. Never entry metadata or locals.
+const publicGraph = {
+  ...graph,
+  nodes: graph.nodes.map((node) => ({ ...node, markdown: "" })),
+};
+---
+<div data-lensmap-document data-executable={String(executable)}>
+  <div class="not-content"><ViewerHost client:load graph={publicGraph} rendered={rendered} inspectorId={inspectorId} /></div>
+  <section data-static-thoughts>
+    {graph.nodes.map((node) => <section data-thought={node.key}><h2>{node.title}</h2><div set:html={rendered[node.key]} /></section>)}
+  </section>
+</div>

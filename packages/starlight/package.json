@@ -1,0 +1,68 @@
+{
+  "version": "0.2.0",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24.16.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "next",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "name": "@lensmap/starlight",
+  "description": "Experimental portable Lensmap Starlight viewer and inspector composition",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicodoggie/lensmap.git",
+    "directory": "packages/starlight"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./components/*": "./dist/components/*",
+    "./viewer": {
+      "types": "./dist/ViewerHost.d.ts",
+      "default": "./dist/ViewerHost.js"
+    },
+    "./viewer.css": "./dist/ViewerHost.css"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "test": "node --test test/*.test.ts",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@lensmap/astro-loader": "workspace:*",
+    "@lensmap/document": "workspace:*",
+    "react-markdown": "10.1.0",
+    "d3-force": "3.0.1",
+    "d3-polygon": "3.0.2"
+  },
+  "peerDependencies": {
+    "astro": "7.4.0",
+    "@astrojs/starlight": "0.42.6",
+    "@astrojs/react": "6.0.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@lensmap/web": "workspace:*",
+    "astro": "7.4.0",
+    "@astrojs/starlight": "0.42.6",
+    "@astrojs/react": "6.0.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2",
+    "@types/node": "24.19.2"
+  }
+}

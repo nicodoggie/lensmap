@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .turbo/
+.astro/
 test-results/
 playwright-report/
 *.tsbuildinfo

@@ -1,0 +1,6 @@
+version: v1
+frontmatter:
+  title: Draft map
+  draft: true
+nodes:
+  - DRAFT_BODY_SENTINEL

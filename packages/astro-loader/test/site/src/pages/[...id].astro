@@ -1,0 +1,12 @@
+---
+import { getCollection, render } from "astro:content";
+export async function getStaticPaths() {
+  return (await getCollection("maps")).map((entry) => ({
+    params: { id: entry.id },
+    props: { entry },
+  }));
+}
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+<html lang="en"><head><title>{entry.data.title}</title></head><body><h1>{entry.data.title}</h1><Content entry={entry} /></body></html>

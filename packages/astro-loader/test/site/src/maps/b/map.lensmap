@@ -1,0 +1,14 @@
+version: v1
+frontmatter:
+  title: Denied
+nodes:
+  - full_text: |
+      # Denied thought
+
+      Result: {6 * 7}
+
+      "Smart quotes" -- inherited Markdown.
+
+      ![Inert local asset](../a/asset.svg)
+
+      <script>globalThis.MUST_NOT_EXECUTE = true</script>

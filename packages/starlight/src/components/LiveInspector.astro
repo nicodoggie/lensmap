@@ -1,0 +1,22 @@
+---
+interface Props {
+  inspectorId?: string;
+}
+const { inspectorId = "default" } = Astro.props;
+---
+<div data-lensmap-inspector-target={inspectorId}></div>
+<style is:global>
+[data-lensmap-inspector-target] { border-block: 1px solid var(--sl-color-gray-5); padding-block: .75rem; margin-block: .75rem; overflow-wrap: anywhere; }
+[data-lensmap-inspector-target] button { display: block; padding: .35rem; cursor: pointer; border: 1px solid var(--sl-color-gray-5); margin-block: .25rem; }
+[data-lensmap-inspector-target] .viewer-connections { margin-top: 1rem; }
+[data-lensmap-inspector-target] .sidebar-section { border-top: 1px solid var(--sl-color-gray-5); padding-block: .75rem; }
+[data-lensmap-inspector-target] summary { cursor: pointer; color: var(--sl-color-gray-2); font-size: var(--sl-text-xs); font-weight: 600; }
+[data-lensmap-inspector-target] details[open] > summary { margin-bottom: .5rem; }
+[data-lensmap-inspector-target] .viewer-connections button { width: 100%; margin: 0; padding: .5rem 0; border: 0; border-radius: 0; background: transparent; color: var(--sl-color-gray-2); font-size: var(--sl-text-xs); text-align: start; white-space: normal; overflow-wrap: anywhere; }
+[data-lensmap-inspector-target] .viewer-connections button:hover { color: var(--sl-color-text-accent); }
+[data-lensmap-inspector-target] :is(button, summary):focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 2px; }
+[data-lensmap-inspector-target] .viewer-connections p { color: var(--sl-color-gray-3); font-size: var(--sl-text-xs); }
+@media (min-width: 72rem) {
+  .right-sidebar:has([data-lensmap-inspector-target]) { position: static; top: auto; height: auto; overflow-y: visible; padding-top: 0; }
+}
+</style>

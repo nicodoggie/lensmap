@@ -1,0 +1,30 @@
+version: v1
+frontmatter:
+  title: Synthetic map
+  description: SERVER_DESCRIPTION_SENTINEL
+nodes:
+  - id: start
+    summary: Start
+    full_text: |
+      # Start
+
+      First static thought body.
+
+      Entry: {props.entry.data.title}
+    connections:
+      - id: short
+        summary: Short thought
+        full_text: |
+          # Short thought
+
+          All of this short thought is visible.
+      - id: long
+        summary: Long thought
+        full_text: |
+          # Long thought
+
+          Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling. Synthetic long thought with natural page scrolling.
+
+          [Hidden link](https://example.invalid/hidden)
+
+          LAST_STATIC_BODY

@@ -1,0 +1,101 @@
+/* Starlight neutral chrome bridge.
+   Geometry and semantic branch/edge colours remain owned by the viewer. */
+[data-lensmap-document] .lensmap-viewer {
+  font-family: inherit;
+  color: var(--sl-color-text);
+  background: var(--sl-color-bg);
+  color-scheme: inherit;
+}
+[data-lensmap-document] .lensmap-viewer .workspace {
+  border-color: var(--sl-color-hairline-light);
+  background: var(--sl-color-bg);
+}
+[data-lensmap-document] .lensmap-viewer .toolbar {
+  border-color: var(--sl-color-hairline-light);
+  background: var(--sl-color-bg-nav);
+}
+[data-lensmap-document] .lensmap-viewer button:not(.node) {
+  color: var(--sl-color-text);
+  border-color: var(--sl-color-gray-5);
+  background: var(--sl-color-bg-sidebar);
+}
+[data-lensmap-document] .lensmap-viewer button:not(.node):hover {
+  background: var(--sl-color-gray-6);
+}
+[data-lensmap-document] .lensmap-viewer .segmented {
+  background: var(--sl-color-bg);
+}
+[data-lensmap-document] .lensmap-viewer .segmented button {
+  background: transparent;
+  color: var(--sl-color-text);
+}
+[data-lensmap-document] .lensmap-viewer .segmented button[aria-pressed="true"],
+[data-lensmap-document]
+  .lensmap-viewer
+  .connection-option[aria-pressed="true"] {
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+  border-color: var(--sl-color-text-accent);
+}
+[data-lensmap-document] .lensmap-viewer .map {
+  background-color: var(--sl-color-bg);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--sl-color-gray-4) 25%, transparent) 1px,
+    transparent 1px
+  );
+}
+[data-lensmap-document] .lensmap-viewer .edge-halo {
+  stroke: var(--sl-color-bg);
+}
+[data-lensmap-document] .lensmap-viewer .focus-ring {
+  border-color: color-mix(
+    in srgb,
+    var(--sl-color-text-accent) 10%,
+    transparent
+  );
+  box-shadow: 0 0 100px 65px
+    color-mix(in srgb, var(--sl-color-text-accent) 2%, transparent);
+}
+/* Node fills stay in the viewer's dark graph palette in both site themes.
+   Do not inherit light-theme dark chrome text onto those fills. */
+[data-lensmap-document] .lensmap-viewer .node {
+  color: #e7eef4;
+}
+[data-lensmap-document]
+  .lensmap-viewer
+  :is(.zoom-controls, .connection-chooser) {
+  background: var(--sl-color-bg-sidebar);
+  border-color: var(--sl-color-hairline-light);
+}
+[data-lensmap-document] .lensmap-viewer .zoom-controls button {
+  background: transparent;
+}
+[data-lensmap-document]
+  .lensmap-viewer
+  :is(.strength, .legend, .connection-chooser span) {
+  color: var(--sl-color-text);
+}
+[data-lensmap-document] .lensmap-viewer .strength input {
+  accent-color: var(--sl-color-text-accent);
+}
+[data-lensmap-document] .lensmap-viewer :is(.map-caption, .page-footer) {
+  font-family: inherit;
+  color: var(--sl-color-gray-3);
+}
+[data-lensmap-document] .lensmap-viewer .map-footer {
+  color: var(--sl-color-text);
+  border-color: var(--sl-color-hairline-light);
+}
+[data-lensmap-document]
+  .lensmap-viewer
+  :is(.neighbourhood-label, .keyboard-target-label) {
+  color: var(--sl-color-text-accent);
+}
+[data-lensmap-document] .lensmap-viewer .connection-chooser .outside-view {
+  color: var(--sl-color-orange-high);
+}
+[data-lensmap-document]
+  .lensmap-viewer
+  :is(button, a, input, summary, .map):focus-visible {
+  outline-color: var(--sl-color-text-accent);
+}

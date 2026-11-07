@@ -1,0 +1,16 @@
+version: v1
+frontmatter:
+  title: " Authored "
+  secret: SERVER_METADATA_ONLY
+nodes:
+  - full_text: |
+      import Witness from './Witness.astro';
+      import asset from './asset.svg';
+
+      # Trusted thought
+
+      <Witness entry={props.entry} raw={props.authoredFrontmatter.title} />
+
+      <img src={asset.src} alt="relative asset" />
+
+      Result: {6 * 7}
