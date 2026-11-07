@@ -2,7 +2,7 @@
 
 ## Preparing the Astro cohort
 
-The current source target is **0.2.0** for `@lensmap/document`,
+The current source target is **0.2.1** for `@lensmap/document`,
 `@lensmap/language-server`, `@lensmap/astro-loader` and `@lensmap/starlight`.
 This is an in-progress experimental release, not a claim of npm publication.
 The new Astro packages must pass native packed-consumer acceptance in addition
@@ -16,6 +16,22 @@ configuration; the existing runtime packages' OIDC configuration does not
 authorize a newly named package. Local npm authentication returned `E401`
 during preparation. No credentials or account settings are installed by the
 package checks.
+
+**Stage only the qualified tarballs, never workspace directories.** `npm stage
+publish` is npm's native deferred-approval mechanism, not the `next` dist-tag.
+Stage the corresponding retained tarball for each package, then approve those
+stages:
+
+```sh
+npm stage publish artifacts/npm/lensmap-astro-loader-0.2.1.tgz \
+  --access public --tag latest --registry=https://registry.npmjs.org/
+```
+
+`pnpm pack`
+rewrites `workspace:*` dependencies to exact release versions; staging a source
+directory with npm bypasses that rewriting. The approved Astro/Starlight 0.2.0
+directory stages retained `workspace:*`, so 0.2.1 replaces them with correctly
+packed dependencies. Already-published versions are not overwritten.
 
 ## Last verified npm release
 
