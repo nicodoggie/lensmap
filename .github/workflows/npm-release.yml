@@ -8,15 +8,23 @@ on:
         type: boolean
         default: false
       version:
-        description: Exact version for promotion or server recovery
+        description: Exact version for promotion or recovery
         type: string
         default: ""
       resume_server:
-        description: Recover only the server from a verified tagged run; never republish the engine
+        description: After reconciling prior publishes, recover only the server from a verified tagged run; never republish the engine
+        type: boolean
+        default: false
+      resume_cohort:
+        description: After reconciling prior publishes, recover missing server/Astro packages from verified tarballs; engine must be published
+        type: boolean
+        default: false
+      include_astro:
+        description: Include Astro loader and Starlight when promoting latest (off supports historical runtime-only releases)
         type: boolean
         default: false
       verified_run:
-        description: Original tagged run ID for server recovery (requires version)
+        description: Original tagged run ID for recovery (requires version)
         type: string
         default: ""
   push:
@@ -31,7 +39,7 @@ concurrency:
 
 jobs:
   verify:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.update_latest && !inputs.resume_server)
+    if: github.event_name != 'workflow_dispatch' || (!inputs.update_latest && !inputs.resume_server && !inputs.resume_cohort)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -53,9 +61,12 @@ jobs:
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import { readFileSync, appendFileSync } from 'node:fs';
-          const document = JSON.parse(readFileSync('packages/document/package.json'));
-          const server = JSON.parse(readFileSync('packages/language-server/package.json'));
-          assert.equal(server.version, document.version, 'Release both packages at the same version.');
+          const names = ['document', 'language-server', 'astro-loader', 'starlight'];
+          const manifests = names.map(name => JSON.parse(readFileSync(`packages/${name}/package.json`)));
+          const document = manifests[0];
+          for (const manifest of manifests) {
+            assert.equal(manifest.version, document.version, 'Release all four packages at the same version.');
+          }
           if (process.env.GITHUB_REF_TYPE === 'tag') {
             assert.equal(process.env.GITHUB_REF_NAME, `npm-v${document.version}`, 'Tag must match the package version.');
           }
@@ -71,6 +82,8 @@ jobs:
           path: |
             artifacts/npm/lensmap-document-${{ steps.version.outputs.version }}.tgz
             artifacts/npm/lensmap-language-server-${{ steps.version.outputs.version }}.tgz
+            artifacts/npm/lensmap-astro-loader-${{ steps.version.outputs.version }}.tgz
+            artifacts/npm/lensmap-starlight-${{ steps.version.outputs.version }}.tgz
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -99,15 +112,15 @@ jobs:
         with:
           name: npm-packages
           path: artifacts/npm
-      - name: Publish document engine, then its dependent server
+      - name: Publish the verified cohort in dependency order, never latest
         run: |
-          npm publish "artifacts/npm/lensmap-document-$VERSION.tgz" --access public --tag next --registry https://registry.npmjs.org/
-          node scripts/npm-wait.ts "artifacts/npm/lensmap-document-$VERSION.tgz" --version "$VERSION"
-          npm publish "artifacts/npm/lensmap-language-server-$VERSION.tgz" --access public --tag next --registry https://registry.npmjs.org/
-          node scripts/npm-wait.ts "artifacts/npm/lensmap-language-server-$VERSION.tgz" --version "$VERSION"
+          for package in document language-server astro-loader starlight; do
+            npm publish "artifacts/npm/lensmap-$package-$VERSION.tgz" --access public --tag next --registry https://registry.npmjs.org/
+            node scripts/npm-wait.ts "artifacts/npm/lensmap-$package-$VERSION.tgz" --version "$VERSION"
+          done
 
   resume-server:
-    if: github.event_name == 'workflow_dispatch' && inputs.resume_server
+    if: github.event_name == 'workflow_dispatch' && (inputs.resume_server || inputs.resume_cohort)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: npm
@@ -119,6 +132,8 @@ jobs:
       VERSION: ${{ inputs.version }}
       VERIFIED_RUN: ${{ inputs.verified_run }}
       UPDATE_LATEST: ${{ inputs.update_latest }}
+      RESUME_SERVER: ${{ inputs.resume_server }}
+      RESUME_COHORT: ${{ inputs.resume_cohort }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -132,8 +147,9 @@ jobs:
       - name: Require an original tagged run with successful package verification
         run: |
           test "$UPDATE_LATEST" = false
+          test "$RESUME_SERVER" != "$RESUME_COHORT"
           [[ "$VERIFIED_RUN" =~ ^[1-9][0-9]*$ ]]
-          test -n "$VERSION"
+          node --input-type=module -e 'import { requireExactVersion } from "./scripts/npm-cohort.ts"; requireExactVersion(process.env.VERSION);'
           expected=$(gh api "repos/$GITHUB_REPOSITORY/commits/npm-v$VERSION" --jq .sha)
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$VERIFIED_RUN" > original-run.json
           jq -e --arg sha "$expected" --arg tag "npm-v$VERSION" \
@@ -145,19 +161,24 @@ jobs:
           path: artifacts/npm
           run-id: ${{ inputs.verified_run }}
           github-token: ${{ github.token }}
-      - name: Confirm the accepted engine and publish only the missing server
+      - name: Confirm accepted engine and recover only missing retained artifacts
         run: |
+          # Reconcile previous accepted/in-flight operations before selecting recovery.
+          # Missing/expired artifacts are a blocker, never permission to rebuild.
           node scripts/npm-wait.ts "artifacts/npm/lensmap-document-$VERSION.tgz" --version "$VERSION"
-          if npm view "@lensmap/language-server@$VERSION" version --json --registry https://registry.npmjs.org/ --prefer-online > server-version.json; then
-            echo "Server already published; verify retained bytes without another publication."
-          else
-            jq -e '.error.code == "E404"' server-version.json
-            npm publish "artifacts/npm/lensmap-language-server-$VERSION.tgz" --access public --tag next --registry https://registry.npmjs.org/
+          packages=(language-server)
+          if [[ "$RESUME_COHORT" = true ]]; then
+            packages+=(astro-loader starlight)
           fi
-          node scripts/npm-wait.ts "artifacts/npm/lensmap-language-server-$VERSION.tgz" --version "$VERSION"
+          for package in "${packages[@]}"; do
+            test -f "artifacts/npm/lensmap-$package-$VERSION.tgz"
+          done
+          for package in "${packages[@]}"; do
+            node scripts/npm-wait.ts "artifacts/npm/lensmap-$package-$VERSION.tgz" --version "$VERSION" --publish-missing
+          done
 
   promote:
-    if: github.event_name == 'workflow_dispatch' && inputs.update_latest && !inputs.resume_server
+    if: github.event_name == 'workflow_dispatch' && inputs.update_latest && !inputs.resume_server && !inputs.resume_cohort
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: npm
@@ -166,6 +187,7 @@ jobs:
       id-token: write
     env:
       VERSION: ${{ inputs.version }}
+      INCLUDE_ASTRO: ${{ inputs.include_astro }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -176,5 +198,10 @@ jobs:
           package-manager-cache: false
       - run: npm install --global npm@11.21.0
       - run: node --test scripts/npm-promote.test.ts
-      - name: Promote both existing packages to latest and verify tags
-        run: node scripts/npm-promote.ts --version "$VERSION"
+      - name: Promote the selected existing cohort to latest and verify tags
+        run: |
+          args=(--version "$VERSION")
+          if [[ "$INCLUDE_ASTRO" = true ]]; then
+            args+=(--include-astro)
+          fi
+          node scripts/npm-promote.ts "${args[@]}"

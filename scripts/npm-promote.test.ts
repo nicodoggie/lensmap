@@ -5,7 +5,10 @@ import { promoteLatest } from "./npm-promote.ts";
 const names = ["@lensmap/document", "@lensmap/language-server"] as const;
 const version = "0.1.0";
 
-function fixture() {
+function fixture(includeAstro = false, version = "0.1.0") {
+  const cohort = includeAstro
+    ? [...names, "@lensmap/astro-loader", "@lensmap/starlight"]
+    : [...names];
   const calls: string[][] = [];
   const manifests: Record<string, unknown> = {
     [names[0]]: { name: names[0], version },
@@ -19,6 +22,21 @@ function fixture() {
     [names[0]]: { latest: "0.0.9", next: "0.2.0" },
     [names[1]]: { latest: "0.0.9", next: "0.2.0" },
   };
+  if (includeAstro) {
+    for (const name of cohort.slice(2)) {
+      manifests[name] = {
+        name,
+        version,
+        dependencies: {
+          [names[0]]: version,
+          ...(name === "@lensmap/starlight"
+            ? { "@lensmap/astro-loader": version }
+            : {}),
+        },
+      };
+      tags[name] = { latest: "0.0.9", next: "0.2.0" };
+    }
+  }
   let failWrite: string | undefined;
   let changeNext = false;
   let staleReads = 0;
@@ -34,12 +52,12 @@ function fixture() {
         }
         return JSON.stringify(current);
       }
-      const name = names.find((name) => args[1] === `${name}@${version}`);
+      const name = cohort.find((name) => args[1] === `${name}@${version}`);
       if (!name || !manifests[name]) throw new Error("npm view failed (E404)");
       return JSON.stringify(manifests[name]);
     }
     assert.deepEqual(args.slice(0, 2), ["dist-tag", "add"]);
-    const name = names.find((name) => args[2] === `${name}@${version}`);
+    const name = cohort.find((name) => args[2] === `${name}@${version}`);
     assert.ok(name);
     assert.equal(args[3], "latest");
     if (name === failWrite) throw new Error("npm dist-tag failed (E403)");
@@ -66,6 +84,95 @@ function fixture() {
 
 const writes = (calls: string[][]) =>
   calls.filter((args) => args[0] === "dist-tag");
+
+test("explicit Astro selection preflights and promotes all four packages", async () => {
+  const version = "0.2.0";
+  const f = fixture(true, version);
+  await promoteLatest(version, { ...f.options, includeAstro: true });
+  assert.equal(writes(f.calls).length, 4);
+  const firstWrite = f.calls.findIndex((args) => args[0] === "dist-tag");
+  const preflight = f.calls.slice(0, firstWrite);
+  for (const name of Object.keys(f.manifests)) {
+    assert.ok(preflight.some((args) => args[1] === `${name}@${version}`));
+    assert.ok(
+      preflight.some((args) => args[1] === name && args[2] === "dist-tags"),
+    );
+  }
+  for (const tags of Object.values(f.tags))
+    assert.deepEqual(tags, { latest: version, next: "0.2.0" });
+});
+
+test("all Astro dependency edges must be exact before any mutation", async () => {
+  for (const [name, dependency] of [
+    ["@lensmap/astro-loader", "@lensmap/document"],
+    ["@lensmap/starlight", "@lensmap/document"],
+    ["@lensmap/starlight", "@lensmap/astro-loader"],
+  ]) {
+    const version = "0.2.0";
+    const f = fixture(true, version);
+    const manifest = f.manifests[name] as {
+      dependencies: Record<string, string>;
+    };
+    manifest.dependencies[dependency] = `^${version}`;
+    await assert.rejects(
+      promoteLatest(version, { ...f.options, includeAstro: true }),
+      /dependency/,
+    );
+    assert.equal(writes(f.calls).length, 0);
+  }
+});
+
+test("missing Astro package prevents writes to the runtime pair", async () => {
+  const version = "0.2.0";
+  const f = fixture(true, version);
+  delete f.manifests["@lensmap/starlight"];
+  await assert.rejects(
+    promoteLatest(version, { ...f.options, includeAstro: true }),
+    /E404/,
+  );
+  assert.equal(writes(f.calls).length, 0);
+});
+
+test("runtime-only selection does not infer Astro packages from a newer version", async () => {
+  const version = "0.2.0";
+  const f = fixture(false, version);
+  await promoteLatest(version, f.options);
+  assert.equal(writes(f.calls).length, 2);
+  assert.ok(
+    f.calls.every(
+      (args) => !args.some((arg) => /astro-loader|starlight/.test(arg)),
+    ),
+  );
+});
+
+test("Astro dry run preflights the full cohort without changing tags", async () => {
+  const version = "0.2.0";
+  const f = fixture(true, version);
+  await promoteLatest(version, {
+    ...f.options,
+    includeAstro: true,
+    dryRun: true,
+  });
+  for (const name of Object.keys(f.manifests)) {
+    assert.ok(f.calls.some((args) => args[1] === `${name}@${version}`));
+    assert.ok(
+      f.calls.some((args) => args[1] === name && args[2] === "dist-tags"),
+    );
+  }
+  assert.equal(writes(f.calls).length, 0);
+});
+
+test("failure at the final cohort tag reports previous writes without rollback or retry", async () => {
+  const version = "0.2.0";
+  const f = fixture(true, version);
+  f.failOn("@lensmap/starlight");
+  await assert.rejects(
+    promoteLatest(version, { ...f.options, includeAstro: true }),
+    /Updated latest: @lensmap\/document, @lensmap\/language-server, @lensmap\/astro-loader.*not transactional/,
+  );
+  assert.equal(writes(f.calls).length, 4);
+  assert.equal(f.tags["@lensmap/starlight"].latest, "0.0.9");
+});
 
 test("checks both manifests and tag snapshots before any latest-only write", async () => {
   const f = fixture();

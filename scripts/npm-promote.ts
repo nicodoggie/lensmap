@@ -4,20 +4,22 @@ import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
+import {
+  cohortDependencies,
+  releasePackages,
+  requireExactVersion,
+  runtimePackages,
+} from "./npm-cohort.ts";
+
 const registry = "https://registry.npmjs.org/";
-const names = ["@lensmap/document", "@lensmap/language-server"] as const;
 const registryArgs = ["--registry", registry, "--prefer-online"];
-const number = "(?:0|[1-9]\\d*)";
-const prerelease = "(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)";
-const exactVersion = new RegExp(
-  `^${number}\\.${number}\\.${number}(?:-${prerelease}(?:\\.${prerelease})*)?$`,
-);
 
 type Npm = (args: string[]) => string;
 type Tags = Record<string, string>;
 type Options = {
   npm?: Npm;
   dryRun?: boolean;
+  includeAstro?: boolean;
   wait?: (milliseconds: number) => Promise<unknown>;
   log?: (message: string) => void;
 };
@@ -62,17 +64,16 @@ export async function promoteLatest(
   {
     npm = runNpm,
     dryRun = false,
+    includeAstro = false,
     wait = setTimeout,
     log = console.log,
   }: Options = {},
 ): Promise<void> {
-  if (!exactVersion.test(version))
-    throw new Error(
-      "Supply an exact version such as 0.1.0, not a tag, range or whitespace-modified value.",
-    );
+  requireExactVersion(version);
+  const names = includeAstro ? releasePackages : runtimePackages;
 
   const before = new Map<string, Tags>();
-  // Complete preflight for both packages before either latest tag can change.
+  // Complete cohort preflight before any latest tag can change.
   for (const name of names) {
     const manifest: unknown = JSON.parse(
       npm([
@@ -91,14 +92,15 @@ export async function promoteLatest(
       manifest.version !== version
     )
       throw new Error(`Registry did not return the exact ${name}@${version}.`);
-    if (
-      name === names[1] &&
-      (!record(manifest.dependencies) ||
-        manifest.dependencies[names[0]] !== version)
-    )
-      throw new Error(
-        "The language-server dependency must name the exact document version being promoted.",
-      );
+    for (const dependency of cohortDependencies[name]) {
+      if (
+        !record(manifest.dependencies) ||
+        manifest.dependencies[dependency] !== version
+      )
+        throw new Error(
+          `${name} dependency on ${dependency} must name the exact version being promoted.`,
+        );
+    }
     before.set(name, readTags(npm, name));
   }
   log(
@@ -150,10 +152,12 @@ if (
       options: {
         version: { type: "string" },
         "dry-run": { type: "boolean", default: false },
+        "include-astro": { type: "boolean", default: false },
       },
     });
     await promoteLatest(values.version ?? "", {
       dryRun: values["dry-run"],
+      includeAstro: values["include-astro"],
     });
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Promotion failed.");

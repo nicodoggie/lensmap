@@ -1,6 +1,22 @@
 # npm package preparation and releases
 
-## Current state
+## Preparing the Astro cohort
+
+The current source target is **0.2.0** for `@lensmap/document`,
+`@lensmap/language-server`, `@lensmap/astro-loader` and `@lensmap/starlight`.
+This is an in-progress experimental release, not a claim of npm publication.
+The new Astro packages must pass native packed-consumer acceptance in addition
+to the existing runtime install/browser smoke before publication. See the
+[shipping plan](plans/2026-11-07-astro-packages.md) for scope and pending evidence.
+
+Publish to **next**; do not implicitly move existing `latest` tags. The new
+package records require their own authorized bootstrap and trusted-publisher
+configuration; the existing runtime packages' OIDC configuration does not
+authorize a newly named package. Local npm authentication returned `E401`
+during preparation. No credentials or account settings are installed by the
+package checks.
+
+## Last verified npm release
 
 `@lensmap/document` and `@lensmap/language-server` are published at **0.1.1**,
 with both **next** and **latest** pointing to that version. They remain
@@ -40,10 +56,11 @@ pnpm exec playwright install chromium
 pnpm test:packages
 ```
 
-`test:packages` builds, packs to ignored `artifacts/npm/`, installs both real
+`test:packages` builds, packs to ignored `artifacts/npm/`, installs all four real
 `.tgz` files in a disposable directory outside the workspace with production
-packages only and lifecycle scripts disabled, then consumes the exports and
-executable there. A consumer TypeScript probe checks the installed declarations
+packages only and lifecycle scripts disabled, checks exact intra-cohort
+dependencies/export resolution, then consumes the runtime exports and
+executable there. A consumer TypeScript probe checks the installed runtime declarations
 using the checkout's test compiler/Node types, not dev dependencies added to the
 production install. The four existing bridge browser tests run against that
 installed server without `--assets` or a checkout preview server. They exercise
@@ -51,6 +68,15 @@ live edits, last-valid retention, source reveal through a synthetic host,
 confirmed content-edit readback, attachment replacement and shutdown.
 Private session URLs/tokens are not retained in Playwright traces. Temporary
 consumer installs are removed on completion/failure; tarballs stay for inspection.
+The same command also copies the synthetic Astro/Starlight source fixtures into
+independent host applications with explicit dependency manifests, resolves the
+installed Astro CLI there, and exercises the actual packed integrations. It
+checks admitted/denied MDX, metadata/defaults, source-relative assets, native
+rendering and the responsive/no-JavaScript Starlight browser behavior. Host
+dependencies are derived from the packages' peer declarations; workspace
+self-reference/symlink behavior is not package qualification. Screenshots are
+retained under `artifacts/npm/consumer-evidence/`. Export resolution alone would
+not establish this native framework behavior.
 
 `pnpm pack:packages` builds and packs without running install/browser acceptance.
 Direct `pnpm --filter @lensmap/language-server pack` also builds the web/server
@@ -65,9 +91,9 @@ command alone.
 `.github/workflows/npm-release.yml` separates publishing from promotion:
 
 - **Push an `npm-v…` tag:** checks and package acceptance run first, retaining
-  tarballs as `npm-packages`. Both manifests must have the same version, and the
+  tarballs as `npm-packages`. All four manifests must have the same version, and the
   tag must match it. The publish job downloads those same verified artifacts
-  without rebuilding, then publishes **document first, then language-server**,
+  without rebuilding, then publishes **document → language-server → astro-loader → starlight**,
   explicitly public and with **next**. Normal subsequent releases do not move
   `latest`; the initial release's existing `latest` tag is retained.
 - After each accepted publish, read-only readiness checks tolerate npm's
@@ -84,6 +110,10 @@ command alone.
   dependency before changing either tag. It moves **latest** for both packages,
   preserves **next**, and reads both tags back. Already-matching latest tags
   require no write. An older published version can be selected for rollback.
+  Select **include_astro** explicitly to promote all four packages instead;
+  preflight then checks every package and exact intra-cohort dependency before
+  any tag mutation. Leaving it off preserves historical runtime-only promotion
+  and rollback, without inventing Astro versions for old releases.
 
 Publishing and promotion share the GitHub **npm** environment and the same
 workflow-wide concurrency group. They are serialized, and no PR-triggered job
@@ -97,10 +127,10 @@ reviewers and allowed refs separately. Permit `npm-v*` tags for publication and
 leave prevention of self-review disabled. This repository does not install
 those account settings.
 
-Both write jobs use GitHub-hosted Ubuntu, Node 24 and pinned npm **11.21.0**.
+Registry-write jobs use GitHub-hosted Ubuntu, Node 24 and pinned npm **11.21.0**.
 OIDC dist-tag support requires npm 11.21.0+ on the 11.x line (or 12.2.0+);
 the previous npm 11.20.0 publish client was insufficient for promotion. Only the
-publish and promote jobs receive `id-token: write`; no long-lived npm token is
+publish, recovery and promote jobs receive `id-token: write`; no long-lived npm token is
 required or added. Public GitHub repository/package OIDC publication generates
 provenance automatically. Promotion only changes tags and does not regenerate
 package bytes or provenance. See [npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
@@ -110,6 +140,8 @@ package bytes or provenance. See [npm's trusted publishing documentation](https:
 ```sh
 pnpm test:release
 node scripts/npm-promote.ts --version 0.1.0 --dry-run
+# Full cohort, only after all four exact artifacts are published and qualified:
+node scripts/npm-promote.ts --version 0.2.0 --include-astro --dry-run
 ```
 
 The dry run reads actual public-registry prerequisites and reports previous
@@ -119,10 +151,10 @@ Versions must be exact: ranges, tags, a `v` prefix and whitespace-modified input
 are rejected without normalization. Registry readback retries are bounded;
 mutations are never automatically retried.
 
-Dist-tag updates are **not transactional across packages**. If the second
-update fails, the first may already be live. The job reports completed writes
+Dist-tag updates are **not transactional across packages**. If a later
+update fails, earlier updates may already be live. The job reports completed writes
 and the previous tag snapshots; it does not attempt an automatic rollback.
-Inspect both actual tags before rerunning or selecting the previous version.
+Inspect the actual tags of every selected package before rerunning or selecting the previous version.
 Rerunning the same promotion skips already-matching tags. A readback mismatch
 or concurrent `next` change fails rather than claiming a complete promotion.
 
@@ -133,7 +165,8 @@ local package tests or by creating this workflow:
 
 1. Review the exact tarballs and approve publication. If package records do not
    exist yet, bootstrap with an authorized npm account and its normal interactive
-   login/2FA, publishing document before server. Use the packed artifacts, public
+   login/2FA, publishing in dependency order (document, server, Astro loader,
+   Starlight). Use the packed artifacts, public
    access and `next`; never commit a credential or paste one into chat. npm's
    [trust CLI documentation](https://docs.npmjs.com/cli/v12/commands/npm-trust/)
    requires an existing package for trust configuration.
@@ -147,7 +180,7 @@ local package tests or by creating this workflow:
    no account settings are installed by this repository. The original tagged
    `0.1.0` run verified artifacts but failed publication with `ENEEDAUTH`;
    subsequent authorized local publication completed the bootstrap.
-3. For subsequent releases, update both package versions, run the checks, commit,
+3. For subsequent cohort releases, update all four package versions, run the checks, commit,
    and only with push/publication authorization create/push the matching `npm-v…`
    tag. Do not tag an already bootstrapped version and expect it to republish.
 4. After a release, install the exact server version from npm in a clean consumer
@@ -184,6 +217,23 @@ immutable version. Local readiness inspection is read-only:
 ```sh
 node scripts/npm-wait.ts PATH_TO_VERIFIED_TARBALL --version 0.1.1
 ```
+
+### Four-package recovery
+
+For an interrupted Astro cohort release, first reconcile accepted/in-flight
+publishes and wait for their registry visibility. Then select `resume_cohort=true`,
+`resume_server=false`, `update_latest=false`, the exact `version` and original
+tagged `verified_run`. This uses the same original-run/verified-artifact checks
+as server-only recovery. The accepted engine must match its retained tarball;
+the remaining retained server, loader and Starlight artifacts are handled in
+dependency order. An already-visible matching artifact is verified rather than
+published again. Missing retained files block recovery before dependent writes.
+
+`resume_server` and `resume_cohort` are mutually exclusive. Neither mode rebuilds
+or republishes the engine. An `E404` alone is not evidence that an earlier
+accepted publish failed: do not select recovery merely to repeat that operation
+during npm's processing delay. A publication error stops recovery without retrying
+the mutation. Promotion remains a separate operation.
 
 ## Consumption after publication
 
