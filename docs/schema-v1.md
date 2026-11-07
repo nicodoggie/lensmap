@@ -28,7 +28,8 @@ nodes:
       - node_id: first
 ```
 
-- The root has `version` (exactly the string `v1`) and `nodes`. Missing/other versions are errors; no legacy version is inferred. `nodes: []` is a valid empty playground.
+- The root has `version` (exactly the string `v1`), `nodes`, and optional `frontmatter`. Missing/other versions are errors; no legacy version is inferred. `nodes: []` is a valid empty playground.
+- `frontmatter` is an open metadata object: `{}` is valid; null, arrays and scalar values are not. Its keys and nested values are opaque to the document engine. A host such as Astro owns metadata validation, defaults and transforms; authored metadata remains distinct from the host's effective entry data. Metadata does not create thoughts or connections, authorize executable content or enter the viewer graph/snapshot. Native source locations and minimal content edits still refer to the original YAML, without stripping or reserializing metadata.
 - Each top-level entry is a Markdown string or rich node. There is no mandatory central node or automatic document-title node.
 - A rich node supports `id`, `summary`, `full_text`, `position`, and `connections`. Ordinary thoughts supply at least one defined content field (`summary` or `full_text`). Portal thoughts additionally accept a matching link `type` and nonblank `url`, without requiring prose. Summary-only and full-text-only nodes work without duplicated prose.
 - A string is shorthand for `full_text`. Its first line supplies the collapsed Markdown title; later lines remain in the complete note. A supplied summary overrides collapsed presentation. No source text is truncated or rewritten.
@@ -63,7 +64,7 @@ Neutral edges are solid and unmarked regardless of nesting/reference syntax. Seq
 
 ## Validation and errors
 
-Objects are strict at the root, node, position and reference boundaries. Unsupported fields are rejected rather than silently stripped. This deliberately describes today's supported subset, not a claim that future v1 will contain only these fields. Mixed reference/content objects, obsolete `items` wrappers, wrong field types, duplicate IDs and unknown references are errors.
+Objects are strict at the root, node, position and reference boundaries; only the explicitly supported root `frontmatter` object is open-ended. Unsupported fields are rejected rather than silently stripped. This deliberately describes today's supported subset, not a claim that future v1 will contain only these fields. Mixed reference/content objects, obsolete `items` wrappers, wrong field types, duplicate IDs and unknown references are errors.
 
 The maintained YAML parser handles syntax and duplicate-key errors; unresolved tags/warnings are surfaced rather than quietly discarded. Acyclic aliases may share input data, but recursive YAML object aliases are rejected with guidance to use `node_id` for graph cycles. The parser retains its native alias-expansion protection; Lensmap adds no arbitrary source-length, node-count or graph-depth cap.
 
@@ -73,4 +74,4 @@ Apply is transactional from the UI's perspective: parse/validate/normalize/layou
 
 Custom type declarations/imports and configurable default connection types remain out of scope. The supplied vocabulary and portal navigation are implemented; [qualification and current host limits](verification/default-connections.md) distinguish browser evidence from native editor evidence.
 
-Document metadata/frontmatter, custom edge vocabularies, relative coordinates, heading anchors, migration rules, import/export, durable playground saving and embedded Markdown editing assistance remain incomplete. The attached language server offers authored-ID completion in valid source and supplied type-name completion while a type is being written, independently of the standalone textarea. See the editable `apps/web/src/sample.yaml` for playground input and [Zed setup](zed-browser.md) for the editor bridge.
+Host-specific metadata interpretation, custom edge vocabularies, relative coordinates, heading anchors, migration rules, import/export, durable playground saving and embedded Markdown editing assistance remain incomplete. The attached language server offers authored-ID completion in valid source and supplied type-name completion while a type is being written, independently of the standalone textarea. See the editable `apps/web/src/sample.yaml` for playground input and [Zed setup](zed-browser.md) for the editor bridge.

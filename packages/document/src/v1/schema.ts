@@ -82,6 +82,7 @@ export const ConnectionSchema: z.ZodType<Connection> = z.lazy(() =>
 export const NodeSchema = z.union([z.string(), RootNodeSchema]);
 export const DocumentSchema = z.strictObject({
   version: z.literal("v1"),
+  frontmatter: z.record(z.string(), z.unknown()).optional(),
   nodes: z.array(NodeSchema),
 });
 export type LensmapDocument = z.infer<typeof DocumentSchema>;

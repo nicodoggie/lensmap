@@ -6,6 +6,13 @@
       "type": "string",
       "const": "v1"
     },
+    "frontmatter": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    },
     "nodes": {
       "type": "array",
       "items": {
