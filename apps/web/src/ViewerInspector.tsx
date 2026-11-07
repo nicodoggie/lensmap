@@ -1,7 +1,7 @@
-import { connectionWording, thoughtAnchors } from "@lensmap/document";
+import { thoughtAnchors } from "@lensmap/document";
 import Markdown from "react-markdown";
-import { label } from "./graph";
 import type { ViewerSidebarContext } from "./Viewer";
+import ViewerConnections from "./ViewerConnections";
 
 export default function ViewerInspector({
   graph,
@@ -84,40 +84,7 @@ export default function ViewerInspector({
           )}
         </div>
       </details>
-      {(["outgoing", "incoming"] as const).map((direction) => {
-        const connections = graph.edges.filter((edge) =>
-          direction === "outgoing"
-            ? edge.from === active?.key
-            : edge.to === active?.key,
-        );
-        return (
-          <details className="sidebar-section outgoing" open key={direction}>
-            <summary>
-              {direction === "outgoing"
-                ? "Outgoing connections"
-                : "Incoming connections"}
-            </summary>
-            {connections.map((edge) => {
-              const key = direction === "outgoing" ? edge.to : edge.from;
-              const node = graph.nodes.find(
-                (candidate) => candidate.key === key,
-              );
-              return (
-                node && (
-                  <button
-                    type="button"
-                    key={edge.key}
-                    onClick={() => onFocus(key)}
-                  >
-                    {connectionWording(edge.type, direction)} · {label(node)}
-                  </button>
-                )
-              );
-            })}
-            {!connections.length && <p>No {direction} connections.</p>}
-          </details>
-        );
-      })}
+      <ViewerConnections graph={graph} active={active} onFocus={onFocus} />
     </aside>
   );
 }

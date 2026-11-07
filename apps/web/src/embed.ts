@@ -8,4 +8,5 @@ export type {
   ViewerState,
 } from "./Viewer";
 export { default as Viewer } from "./Viewer";
+export { default as ViewerConnections } from "./ViewerConnections";
 export { default as ViewerInspector } from "./ViewerInspector";
