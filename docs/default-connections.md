@@ -4,7 +4,7 @@
 
 **Implemented experimental specification.** Nico's implementation request accepted this document, including its explicitly recorded [completion defaults](#completion-defaults-proposed-for-review). It remains the behavior contract, not a frozen public schema. See [qualification and host limitations](verification/default-connections.md) for exercised evidence and its limits.
 
-The current [experimental schema](schema-v1.md) accepts the supplied relationship `type` and portal `url` fields. `version: v1` remains incomplete and experimental. Custom declarations and inherited defaults remain deferred.
+The current [experimental schema](schema-v1.md) accepts the supplied relationship `type` and portal `url` fields. `version: v1` remains incomplete and experimental. Custom declarations are covered by the separate [custom connection-type design](custom-connection-types.md), which remains unimplemented and requires specification review before implementation planning. Configurable default connection-type assignment remains excluded.
 
 The goal is to let authors enrich ordinary thought connections with a small vocabulary, and connect to external thoughts through visible portals, without restructuring their notes or losing their place in the map.
 
@@ -299,4 +299,4 @@ Use focused engine tests and native schema export/parity checks for owned semant
 
 ## Review and stop rule
 
-The default slice was separately authorized for implementation. Custom type declarations and shared vocabularies are the next design topic, not implied implementation work. No publication, Tauri app, wider filesystem authority or other deferred feature is authorized by completing this specification.
+The default slice was separately authorized for implementation. Custom type declarations and shared vocabularies have a separate [design specification](custom-connection-types.md), not implied implementation authority from this document. No publication, Tauri app, wider filesystem authority or other deferred feature is authorized by completing this specification.
