@@ -1,6 +1,14 @@
 # BF / Lensmap integration probe
 
-## Packaged consumer qualification (current continuation)
+## Retired after main integration
+
+Nico authorized main integration and BF probe cleanup on 2026-11-07. Lensmap `main` was fast-forwarded/pushed to `e41c136c2fb607fb7531c988d50be793bb913583`, with merged-tree `pnpm check` passing. The owned BF server is stopped and port 4329 is closed. The three tracked probe edits were restored to their recorded BF HEAD; the converted map, probe directory and classified generated/dependency/cache material were removed. Primary BF's HEAD, index and NUL-safe status fingerprints match cleanup preflight. No BF commits, pushes or deployment occurred.
+
+Authored source, both source fixtures, the tracked binary patch and useful evidence are preserved privately under the BF repository's `.git/probe-archives/lensmap-integration-2026-11-07-y6_tc4_f/`. `authored-probe.tar.gz` has SHA256 `fdb12d4c08ed37ac5d5a59e720017b1d4a92736ad7ee1a4eae6ada7cb7f06e25`; `cleanup-receipt.json` has SHA256 `31469636168a21337c1e0bcc89f8fee3086d75c8c88f54fdca50711fae656287`. The parent independently verified all 295 archive members, installed cleanup state and the preserved primary metadata. These private archive payloads are not committed to Lensmap.
+
+**Native removal hold:** ordinary `git worktree remove` refused the isolated checkout because it contains the protected populated `5etools-src` gitlink. The worktree remains registered and clean, with branch `lensmap-integration` retained at `75725a65c8b120302049c4e91cf1ba3e09cd6994`; no forced removal or submodule alteration was performed. This is a retained checkout, not a live probe. The instructions, URLs and worktree-local evidence paths below are historical, not authorization to restart or recreate it. npm publication and any future BF integration remain separate.
+
+## Historical packaged consumer qualification
 
 **Latest priority — verified:** Nico prioritized the child connecting-line gaps before packaging closeout. The shared correction in `220c668` is now live in the standalone viewer and existing BF consumer probe. BF consumes the fresh UI artifact described by `/home/ensu/Projects/lensmap/artifacts/line-endpoints/manifest.json`, without geometry compensation. Preserve the older immutable packaging baseline and its receipts; do not relabel them as containing this fix.
 
@@ -22,7 +30,7 @@ Retained native execution checks all 11 unmarked child targets at widths 390/800
 
 This closes the shared line fix in the live development consumers, not npm publication or a production BF deployment. The existing BF production build predates this frontend delta. The later Lensmap commit/push checkpoint regenerated the combined four-package local cohort, including the server's bundled web preview, and passed `pnpm check` plus real isolated `pnpm test:packages` acceptance. These fresh results do not relabel the older immutable baseline; npm bootstrap/publication, registry-only consumption and any BF production deployment remain separate gates.
 
-## Latest authorized PoC continuation
+## Historical authorized PoC iterations
 
 ### Always-visible traditional reading section
 
