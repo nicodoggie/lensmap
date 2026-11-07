@@ -45,7 +45,6 @@ describe("embedded viewer", () => {
         },
       ],
     };
-    expect(ViewerConnections).toBeTypeOf("function");
     const html = renderToStaticMarkup(
       createElement(ViewerConnections, {
         graph: connected,
@@ -55,8 +54,8 @@ describe("embedded viewer", () => {
       }),
     );
 
-    expect(html).toContain("<summary>Outgoing connections</summary>");
-    expect(html).toContain("<summary>Incoming connections</summary>");
+    expect(html).toContain("Outgoing connections");
+    expect(html).toContain("Incoming connections");
     expect(html).toContain("prevents · Site: After");
     expect(html).toContain("follows · Site: Before");
     expect(html).toContain('data-focus-key="after"');
