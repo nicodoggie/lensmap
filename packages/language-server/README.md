@@ -11,7 +11,7 @@ other platforms are not yet qualified. Automatic browser launching uses
 `xdg-open`; `--no-open` leaves opening the preview URL to the host/client.
 
 ```sh
-npm install --global @lensmap/language-server@next
+npm install --global @lensmap/language-server
 lensmap-lsp --help
 lensmap-lsp --configure-zed --zed /usr/bin/zeditor
 ```

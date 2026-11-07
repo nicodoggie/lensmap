@@ -5,10 +5,10 @@ semantic graphs, revision-bound source bindings, session identities and bounded
 source-preserving content edits. Does not own layout, browser rendering or LSP.
 
 Requires Node 24.16 or newer. ESM only. The API and `version: v1` authoring format
-are incomplete and experimental; `0.1.x` is not a promise of a stable schema.
+are incomplete and experimental; `0.x` is not a promise of a stable schema.
 
 ```sh
-npm install @lensmap/document@next
+npm install @lensmap/document
 ```
 
 ```js

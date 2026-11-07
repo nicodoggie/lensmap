@@ -106,7 +106,7 @@ test("readiness CLI accepts both historical runtime and new Astro retained tarba
   }
 });
 
-test("recovery CLI publishes the original tarball once with explicit public next registry flags", () => {
+test("recovery CLI publishes the original tarball once with explicit public latest registry flags", () => {
   const f = cliFixture("@lensmap/starlight", "0.2.0");
   try {
     f.setRegistry(null);
@@ -121,7 +121,7 @@ test("recovery CLI publishes the original tarball once with explicit public next
           "--access",
           "public",
           "--tag",
-          "next",
+          "latest",
           "--registry",
           "https://registry.npmjs.org/",
         ],

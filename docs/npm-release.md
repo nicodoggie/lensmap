@@ -9,7 +9,8 @@ The new Astro packages must pass native packed-consumer acceptance in addition
 to the existing runtime install/browser smoke before publication. See the
 [shipping plan](plans/2026-11-07-astro-packages.md) for scope and pending evidence.
 
-Publish to **next**; do not implicitly move existing `latest` tags. The new
+Publish directly to **latest**. Nico selected this simpler release policy: no
+`next` staging channel or separate promotion step for routine releases. The new
 package records require their own authorized bootstrap and trusted-publisher
 configuration; the existing runtime packages' OIDC configuration does not
 authorize a newly named package. Local npm authentication returned `E401`
@@ -94,8 +95,8 @@ command alone.
   tarballs as `npm-packages`. All four manifests must have the same version, and the
   tag must match it. The publish job downloads those same verified artifacts
   without rebuilding, then publishes **document → language-server → astro-loader → starlight**,
-  explicitly public and with **next**. Normal subsequent releases do not move
-  `latest`; the initial release's existing `latest` tag is retained.
+  explicitly public and with **latest**. Routine releases need no separate
+  promotion; historical tags are left alone unless an explicit operation changes them.
 - After each accepted publish, read-only readiness checks tolerate npm's
   processing delay and require the registry integrity to match the verified
   tarball. They retry missing-version reads, never the publication itself.
@@ -167,7 +168,7 @@ local package tests or by creating this workflow:
    exist yet, bootstrap with an authorized npm account and its normal interactive
    login/2FA, publishing in dependency order (document, server, Astro loader,
    Starlight). Use the packed artifacts, public
-   access and `next`; never commit a credential or paste one into chat. npm's
+   access and `latest`; never commit a credential or paste one into chat. npm's
    [trust CLI documentation](https://docs.npmjs.com/cli/v12/commands/npm-trust/)
    requires an existing package for trust configuration.
 2. Configure a trusted publisher for **each** package: GitHub owner `nicodoggie`,
@@ -238,7 +239,7 @@ the mutation. Promotion remains a separate operation.
 ## Consumption after publication
 
 ```sh
-npm install --global @lensmap/language-server@next
+npm install --global @lensmap/language-server
 lensmap-lsp --configure-zed --zed /usr/bin/zeditor
 ```
 

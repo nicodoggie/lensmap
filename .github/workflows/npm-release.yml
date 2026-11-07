@@ -112,10 +112,10 @@ jobs:
         with:
           name: npm-packages
           path: artifacts/npm
-      - name: Publish the verified cohort in dependency order, never latest
+      - name: Publish the verified cohort to latest in dependency order
         run: |
           for package in document language-server astro-loader starlight; do
-            npm publish "artifacts/npm/lensmap-$package-$VERSION.tgz" --access public --tag next --registry https://registry.npmjs.org/
+            npm publish "artifacts/npm/lensmap-$package-$VERSION.tgz" --access public --tag latest --registry https://registry.npmjs.org/
             node scripts/npm-wait.ts "artifacts/npm/lensmap-$package-$VERSION.tgz" --version "$VERSION"
           done
 

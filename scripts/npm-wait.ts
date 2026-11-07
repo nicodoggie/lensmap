@@ -140,7 +140,7 @@ if (
               "--access",
               "public",
               "--tag",
-              "next",
+              "latest",
               "--registry",
               "https://registry.npmjs.org/",
             ],

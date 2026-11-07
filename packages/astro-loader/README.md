@@ -3,7 +3,7 @@
 Experimental `.lensmap` content collections for **Astro 7.4.0**. This release deliberately uses Astro's private `addContentEntryType` / `getRenderModule` seam and checks that exact version. It is not a stable Astro extension API. Node >=24.16 is required.
 
 ```sh
-pnpm add @lensmap/astro-loader@next @lensmap/document@next astro@7.4.0
+pnpm add @lensmap/astro-loader @lensmap/document astro@7.4.0
 ```
 
 ```js

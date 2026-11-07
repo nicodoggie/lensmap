@@ -3,7 +3,7 @@
 Experimental Starlight composition for Lensmap documents. Qualified against **Astro 7.4.0**, **Starlight 0.42.6**, **@astrojs/react 6.0.6**, and **React / React DOM 19.3.1**. Its loader's private Astro content seam is checked and deliberately version-bound. Node >=24.16 is required.
 
 ```sh
-pnpm add @lensmap/starlight@next @lensmap/astro-loader@next @lensmap/document@next \
+pnpm add @lensmap/starlight @lensmap/astro-loader @lensmap/document \
   astro@7.4.0 @astrojs/starlight@0.42.6 @astrojs/react@6.0.6 react@19.3.1 react-dom@19.3.1
 ```
 
