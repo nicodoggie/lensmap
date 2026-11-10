@@ -22,6 +22,7 @@ import StyledConnection from "./ConnectionGap";
 import { limitMagnification } from "./clearance";
 import { fallbackPresentation } from "./connection-appearance";
 import { markerClearance, resolveConnectionWidth } from "./connection-style";
+import { layoutGraph } from "./document/layout";
 import { edgeLanes } from "./edge-routing";
 import { colours, type GraphData, type GraphNode, label } from "./graph";
 import {
@@ -40,6 +41,7 @@ import {
   stepConnectionChoice,
 } from "./navigation";
 import { neighbourhood } from "./neighbourhood";
+import { applyNodeStyle, baseRadius } from "./node-style";
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import { useMapKeyboard } from "./useMapKeyboard";
 import ViewerInspector from "./ViewerInspector";
@@ -86,7 +88,7 @@ export interface ViewerProps {
 }
 
 export default function Viewer({
-  graph,
+  graph: inputGraph,
   embedded = false,
   navigationControls,
   thoughtLink,
@@ -102,6 +104,24 @@ export default function Viewer({
   renderSidebar,
   renderExternalInspector,
 }: ViewerProps) {
+  const [measured, setMeasured] = useState<ReadonlyMap<string, number>>(
+    new Map(),
+  );
+  const graph = useMemo(() => {
+    const nodes = inputGraph.nodes.map((node) => ({
+      ...node,
+      baseRadius:
+        (node.style?.scale === "auto" ? measured.get(node.key) : undefined) ??
+        baseRadius(node.style),
+    }));
+    if (
+      !nodes.some(
+        (node, i) => node.baseRadius !== (inputGraph.nodes[i].baseRadius ?? 43),
+      )
+    )
+      return inputGraph;
+    return layoutGraph(nodes, inputGraph.edges);
+  }, [inputGraph, measured]);
   const scope = useId();
   const anchors = useMemo(() => thoughtAnchors(graph.nodes), [graph.nodes]);
   const entryNode = graph.nodes.find((n) => n.key === initialTarget);
@@ -248,6 +268,66 @@ export default function Viewer({
     [graph, inNeighbourhood, selected],
   );
 
+  // A temporary view unmounts distant thoughts. Retain their last measurements
+  // until they are visible again, then measure the newly mounted content before
+  // paint. Neither selection decoration nor pan/zoom changes authored size.
+  const measurementView = inNeighbourhood ? selected : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: measurementView tracks mounted nodes without rerunning measurement on camera/selection decoration changes.
+  useLayoutEffect(() => {
+    let alive = true;
+    const measure = () => {
+      if (!alive || !canvas.current) return;
+      const visible = new Map<string, number>();
+      canvas.current
+        .querySelectorAll<HTMLElement>(".node[data-auto-size='true']")
+        .forEach((element) => {
+          const key = element.dataset.node;
+          if (!key || !inputGraph.nodes.some((node) => node.key === key))
+            return;
+          const clone = element.cloneNode(true) as HTMLElement;
+          clone.removeAttribute("id");
+          clone.classList.remove("selected", "connected");
+          clone.style.cssText = element.style.cssText;
+          Object.assign(clone.style, {
+            transform: "none",
+            visibility: "hidden",
+            position: "absolute",
+            width: "max-content",
+            maxWidth: "260px",
+            height: "auto",
+            minHeight: "0",
+            left: "0",
+            top: "0",
+          });
+          canvas.current?.append(clone);
+          const box = clone.getBoundingClientRect();
+          visible.set(
+            key,
+            Math.max(43, Math.ceil(Math.hypot(box.width, box.height) / 2)),
+          );
+          clone.remove();
+        });
+      setMeasured((previous) => {
+        const next = new Map<string, number>();
+        for (const node of inputGraph.nodes) {
+          if (node.style?.scale !== "auto") continue;
+          const radius = visible.get(node.key) ?? previous.get(node.key);
+          if (radius !== undefined) next.set(node.key, radius);
+        }
+        return JSON.stringify([...previous]) === JSON.stringify([...next])
+          ? previous
+          : next;
+      });
+    };
+    measure();
+    void document.fonts.ready.then(measure);
+    document.fonts.addEventListener("loadingdone", measure);
+    return () => {
+      alive = false;
+      document.fonts.removeEventListener("loadingdone", measure);
+    };
+  }, [inputGraph, measurementView]);
+
   useEffect(() => cancelActivation, [cancelActivation]);
 
   useEffect(() => {
@@ -299,10 +379,25 @@ export default function Viewer({
     dismissConnectionChoice,
   ]);
 
+  // Include the control hull of styled self-loops in Overview as well as circles.
+  const overviewPoints = nodes.flatMap((node) => {
+    const loops = edges.filter(
+      (edge) => edge.from === node.key && edge.to === node.key,
+    );
+    if (!node.style || loops.length === 0) return [node];
+    const reach =
+      (node.baseRadius ?? nodeRadius) *
+      (3 + Math.max(...loops.map((edge) => lanes.get(edge.key)?.index ?? 0)));
+    return [
+      node,
+      { x: node.x - reach, y: node.y - reach, baseRadius: 0 },
+      { x: node.x + reach, y: node.y - reach, baseRadius: 0 },
+    ];
+  });
   const shownCamera = inNeighbourhood
     ? neighbourhoodCamera
     : overview
-      ? fitCamera(nodes, size, nodeRadius)
+      ? fitCamera(overviewPoints, size, nodeRadius)
       : camera;
   // Limit magnification before shared scene zoom, never changing circle centres.
   const projected = (local?.nodes ?? nodes).map((node) => ({
@@ -313,6 +408,7 @@ export default function Viewer({
       overview ? 0 : shownStrength,
     ),
     node,
+    baseRadius: node.baseRadius,
   }));
   const circles = overview
     ? projected
@@ -908,14 +1004,18 @@ export default function Viewer({
                     x:
                       from.x +
                       (dx / distance) *
-                        (nodeRadius * from.scale + startClearance),
+                        ((from.node.baseRadius ?? nodeRadius) * from.scale +
+                          startClearance),
                     y:
                       from.y +
                       (dy / distance) *
-                        (nodeRadius * from.scale + startClearance),
+                        ((from.node.baseRadius ?? nodeRadius) * from.scale +
+                          startClearance),
                   };
                   // Unmarked targets meet the outline; only decorations need space.
-                  const targetRadius = nodeRadius * to.scale + endClearance;
+                  const targetRadius =
+                    (to.node.baseRadius ?? nodeRadius) * to.scale +
+                    endClearance;
                   const end = {
                     x: to.x - (dx / distance) * targetRadius,
                     y: to.y - (dy / distance) * targetRadius,
@@ -938,7 +1038,8 @@ export default function Viewer({
                     bend =
                       (side < 0 ? -1 : 1) * (190 + (lane?.index ?? 0) * 60);
                   }
-                  const radius = nodeRadius * from.scale;
+                  const radius =
+                    (from.node.baseRadius ?? nodeRadius) * from.scale;
                   const loop = radius * (3 + (lane?.index ?? 0));
                   const points =
                     edge.from === edge.to
@@ -1003,6 +1104,17 @@ export default function Viewer({
                 return (
                   <button
                     type="button"
+                    ref={(element) => {
+                      if (element)
+                        applyNodeStyle(
+                          element,
+                          node.style,
+                          colours[node.branch],
+                        );
+                    }}
+                    data-auto-size={
+                      node.style?.scale === "auto" ? "true" : undefined
+                    }
                     key={node.key}
                     id={`${scope}-thought-${node.key}`}
                     data-anchor={anchors.get(node.key)}
@@ -1019,6 +1131,8 @@ export default function Viewer({
                     title={label(node)}
                     style={
                       {
+                        width: 2 * (node.baseRadius ?? nodeRadius),
+                        height: 2 * (node.baseRadius ?? nodeRadius),
                         left: point.x,
                         top: point.y,
                         transform: `translate(-50%, -50%) scale(${point.scale})`,
@@ -1035,6 +1149,11 @@ export default function Viewer({
                       else focusNode(node.key);
                     }}
                   >
+                    {node.style?.icon && (
+                      <span className="node-icon" aria-hidden="true">
+                        {node.style.icon}
+                      </span>
+                    )}
                     {node.destination && (
                       <span
                         role="img"
@@ -1070,7 +1189,7 @@ export default function Viewer({
                       id={`${scope}-anchor-${encodeURIComponent(anchors.get(node.key) ?? node.key)}`}
                       aria-hidden="true"
                     />
-                    <span>
+                    <span className="node-summary">
                       {node.unresolved ? (
                         "?"
                       ) : (

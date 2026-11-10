@@ -34,8 +34,9 @@ export function layoutGraph(nodes: NodeDraft[], edges: GraphEdge[]): GraphData {
   }
   const roots = nodes.filter((node) => !childKeys.has(node.key));
   const placed = new Map<string, LayoutNode>();
-  const step = 180;
-  const padding = 56;
+  const maximum = Math.max(43, ...nodes.map((n) => n.baseRadius ?? 43));
+  const step = Math.max(180, maximum * 2 + 24);
+  const padding = Math.max(56, maximum + 13);
 
   function plan(node: NodeDraft, isRoot: boolean): SubtreePlan {
     const descendants = (children.get(node.key) ?? []).map((child) =>
@@ -116,12 +117,13 @@ export function layoutGraph(nodes: NodeDraft[], edges: GraphEdge[]): GraphData {
   simulation.tick(ticks);
 
   return {
-    nodes: nodes.map(({ position: _position, ...node }) => {
+    nodes: nodes.map(({ position, ...node }) => {
       const point = placed.get(node.key);
       if (!point)
         throw new Error(`Automatic layout could not place node "${node.key}".`);
       return {
         ...node,
+        ...(position ? { position } : {}),
         x: point.x,
         y: point.y,
       };

@@ -1,3 +1,4 @@
+import { NodeStyleSchema } from "../node-style.js";
 import { ConnectionTypeDeclarationsSchema } from "../vocabulary.js";
 
 export type { ConnectionTypeDeclarations } from "../vocabulary.js";
@@ -35,6 +36,8 @@ const NodeContentSchema = z.strictObject({
   summary: z.string().nullable().optional(),
   full_text: z.string().nullable().optional(),
   position: PositionSchema.optional(),
+  classes: z.array(z.string()).optional(),
+  style: NodeStyleSchema.optional(),
 });
 
 export type Reference = z.infer<typeof ReferenceSchema>;
@@ -91,6 +94,7 @@ export const DocumentSchema = z.strictObject({
   version: z.literal("v1"),
   frontmatter: z.record(z.string(), z.unknown()).optional(),
   connection_types: ConnectionTypeDeclarationsSchema.optional(),
+  node_styles: z.record(z.string(), NodeStyleSchema).optional(),
   nodes: z.array(NodeSchema),
 });
 export type LensmapDocument = z.infer<typeof DocumentSchema>;

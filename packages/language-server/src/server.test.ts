@@ -22,6 +22,48 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
+it("transports node styles through live analysis and retains last-valid styling", async () => {
+  const f = await fixture();
+  await f.open();
+  const text = `version: v1
+node_styles:
+  highlighted: "color: red; --lensmap-scale: auto"
+nodes:
+  - id: alpha
+    summary: Alpha
+    classes: [highlighted]
+    style: {color: blue, --lensmap-icon: "★"}
+`;
+  const first = await f.change(text, 2);
+  expect(first.valid).toBe(true);
+  expect(first.graph.nodes[0].style).toMatchObject({
+    scale: "auto",
+    icon: "★",
+  });
+  expect(
+    first.graph.nodes[0].style.declarations.map(
+      (d: { value: string }) => d.value,
+    ),
+  ).toEqual(["red", "blue"]);
+  const key = first.graph.nodes[0].key;
+  const invalid = await f.change(
+    text.replace("color: blue", "color: url(unsafe)"),
+    3,
+  );
+  expect(invalid.valid).toBe(false);
+  expect(invalid.graph).toEqual(first.graph);
+  expect(invalid.diagnostics[0].range.start.line).toBe(7);
+  const recovered = await f.change(
+    text.replace("color: blue", "color: green"),
+    4,
+  );
+  expect(recovered.valid).toBe(true);
+  expect(recovered.graph.nodes[0].key).toBe(key);
+  expect(recovered.graph.nodes[0].style.declarations.at(-1).value).toBe(
+    "green",
+  );
+});
+
 async function fixture(showDocument = false, projectRoot?: string) {
   const assets = await mkdtemp(join(tmpdir(), "lensmap-server-"));
   cleanups.push(() => rm(assets, { recursive: true, force: true }));

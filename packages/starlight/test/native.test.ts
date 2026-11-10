@@ -119,6 +119,21 @@ test("native Starlight static reading and one-session responsive inspector", asy
     await expect(inspector.locator("[data-selected-content]")).toContainText(
       "First static thought body.",
     );
+    const styled = page.locator('.node[data-anchor="short"]');
+    await expect(styled).toHaveCSS("color", "rgb(255, 241, 194)");
+    await expect(styled).toHaveCSS("border-top-style", "dashed");
+    await expect(styled).toContainText("★");
+    assert.ok(
+      await styled.evaluate((node) => (node as HTMLElement).offsetWidth > 86),
+    );
+    // Fitting uses the summary, not the long expanded Markdown body.
+    await expect
+      .poll(() =>
+        page
+          .locator('.node[data-anchor="long"]')
+          .evaluate((node) => (node as HTMLElement).offsetWidth),
+      )
+      .toBeLessThan(200);
     const identity = await page.evaluate(() => performance.timeOrigin);
     await inspector
       .getByRole("button", { name: "connected to · Long thought", exact: true })

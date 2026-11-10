@@ -43,7 +43,9 @@ export default function NeighbourhoodContinuations({
       incoming ? presentation.endMarker : presentation.startMarker,
       width,
     );
-    const radius = nodeRadius * point.scale + clearance;
+    const radius =
+      (byKey.get(continuation.at)?.baseRadius ?? nodeRadius) * point.scale +
+      clearance;
     const near = { x: point.x + ux * radius, y: point.y + uy * radius };
     const far = {
       x: near.x + ux * 70 * point.scale,

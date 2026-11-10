@@ -91,3 +91,33 @@ test("map analysis consumes project vocabulary without changing source or author
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("native adapter retains styles and original Markdown source", () => {
+  const source = `version: v1
+node_styles:
+  highlighted: "color: red; --lensmap-scale: 2"
+nodes:
+  - summary: "**A styled thought**"
+    classes: [highlighted]
+    style:
+      color: blue
+      --lensmap-icon: "★"
+`;
+  const result = parseMap(source, "file:///styled.lensmap");
+  assert.equal(result.source, source);
+  assert.equal(result.graph.nodes[0].title, "**A styled thought**");
+  assert.equal(result.graph.nodes[0].style?.scale, 2);
+  assert.equal(result.graph.nodes[0].style?.icon, "★");
+  assert.deepEqual(
+    result.graph.nodes[0].style?.declarations.map((d) => d.value),
+    ["red", "blue"],
+  );
+  assert.throws(
+    () =>
+      parseMap(
+        source.replace("color: blue", "color: url(unsafe)"),
+        "file:///styled.lensmap",
+      ),
+    /Node style/,
+  );
+});

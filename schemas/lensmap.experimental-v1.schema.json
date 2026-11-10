@@ -82,6 +82,28 @@
         ]
       }
     },
+    "node_styles": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": ["string", "number"]
+            }
+          }
+        ]
+      }
+    },
     "nodes": {
       "type": "array",
       "items": {
@@ -119,6 +141,28 @@
                         "required": ["x", "y"],
                         "additionalProperties": false
                       },
+                      "classes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "style": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": ["string", "number"]
+                            }
+                          }
+                        ]
+                      },
                       "connections": {
                         "type": "array",
                         "items": {
@@ -154,6 +198,28 @@
                         },
                         "required": ["x", "y"],
                         "additionalProperties": false
+                      },
+                      "classes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "style": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": ["string", "number"]
+                            }
+                          }
+                        ]
                       },
                       "connections": {
                         "type": "array",
@@ -192,6 +258,28 @@
                     },
                     "required": ["x", "y"],
                     "additionalProperties": false
+                  },
+                  "classes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "style": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "type": ["string", "number"]
+                        }
+                      }
+                    ]
                   },
                   "type": {
                     "type": "string",
@@ -270,6 +358,28 @@
                       "required": ["x", "y"],
                       "additionalProperties": false
                     },
+                    "classes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "style": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": ["string", "number"]
+                          }
+                        }
+                      ]
+                    },
                     "type": {
                       "type": "string",
                       "pattern": "^(?!(?:map_link|external_link)$).*\\S"
@@ -309,6 +419,28 @@
                       },
                       "required": ["x", "y"],
                       "additionalProperties": false
+                    },
+                    "classes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "style": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": ["string", "number"]
+                          }
+                        }
+                      ]
                     },
                     "type": {
                       "type": "string",
@@ -351,6 +483,28 @@
                   },
                   "required": ["x", "y"],
                   "additionalProperties": false
+                },
+                "classes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "style": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      }
+                    }
+                  ]
                 },
                 "type": {
                   "type": "string",

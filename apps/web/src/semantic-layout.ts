@@ -1,6 +1,7 @@
 import type { SemanticGraph } from "@lensmap/document";
 import { layoutGraph, type NodeDraft } from "./document/layout";
 import type { Branch, GraphData } from "./graph";
+import { baseRadius } from "./node-style";
 
 interface PreviousLayout {
   semantic: SemanticGraph;
@@ -9,7 +10,11 @@ interface PreviousLayout {
 const branches: Branch[] = ["blue", "amber", "mint", "rose"];
 const layoutKey = (graph: SemanticGraph) =>
   JSON.stringify({
-    nodes: graph.nodes.map((node) => [node.key, node.position]),
+    nodes: graph.nodes.map((node) => [
+      node.key,
+      node.position,
+      baseRadius(node.style),
+    ]),
     edges: graph.edges.map((edge) => [edge.key, edge.from, edge.to, edge.kind]),
   });
 
@@ -44,13 +49,24 @@ export function layoutSemanticGraph(
       colour(node.key, branches[i % branches.length], 0);
     });
   const drafts: NodeDraft[] = graph.nodes.map(
-    ({ key, id, title, markdown, unresolved, position, destination }) => ({
+    ({
       key,
       id,
       title,
       markdown,
       unresolved,
       position,
+      destination,
+      style,
+    }) => ({
+      key,
+      id,
+      title,
+      markdown,
+      unresolved,
+      position,
+      style,
+      baseRadius: baseRadius(style),
       ...(destination ? { destination } : {}),
       branch: colours.get(key) ?? "blue",
     }),
@@ -70,7 +86,7 @@ export function layoutSemanticGraph(
       previous.layout.nodes.map((node) => [node.key, node]),
     );
     return {
-      nodes: drafts.map(({ position: _position, ...node }) => ({
+      nodes: drafts.map((node) => ({
         ...node,
         x: points.get(node.key)?.x ?? 0,
         y: points.get(node.key)?.y ?? 0,

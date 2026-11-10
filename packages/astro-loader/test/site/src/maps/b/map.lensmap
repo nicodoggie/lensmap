@@ -18,3 +18,4 @@ nodes:
     connections:
       - type: host_relation
         full_text: Styled child
+        style: "color: #d9a441; --lensmap-scale: auto;"

@@ -5,6 +5,13 @@ frontmatter:
 connection_types:
   host_relation:
     stroke-width: 3
+node_styles:
+  highlight:
+    color: "#fff1c2"
+    background-color: "#243346"
+    border: "3px dashed #d9a441"
+    --lensmap-scale: 1.4
+    --lensmap-icon: "★"
 nodes:
   - id: start
     summary: Start
@@ -18,12 +25,14 @@ nodes:
       - type: host_relation
         id: short
         summary: Short thought
+        classes: [highlight]
         full_text: |
           # Short thought
 
           All of this short thought is visible.
       - id: long
         summary: Long thought
+        style: "color: #d9a441; --lensmap-scale: auto;"
         full_text: |
           # Long thought
 

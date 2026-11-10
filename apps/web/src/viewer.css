@@ -642,3 +642,19 @@
     padding: 0;
   }
 }
+
+:where(.lensmap-viewer) .node[data-auto-size="true"] > .node-summary {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  overflow-wrap: anywhere;
+}
+:where(.lensmap-viewer) .node-icon {
+  flex-shrink: 0;
+}
+:where(.lensmap-viewer) .node .destination-icon {
+  color: #e7eef4;
+  background: #14202a;
+  border-radius: 4px;
+  flex-shrink: 0;
+}

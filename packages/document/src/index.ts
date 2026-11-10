@@ -1,4 +1,12 @@
 import {
+  type NodePresentation,
+  parseNodeStyle,
+  resolveNodeStyle,
+} from "./node-style.js";
+
+export type { NodePresentation, NodeStyleDeclaration } from "./node-style.js";
+
+import {
   type ConnectionPresentation,
   type ResolvedConnectionType,
   resolveVocabulary,
@@ -102,6 +110,7 @@ export type Thought = {
   markdown: string;
   unresolved: boolean;
   position?: { x: number; y: number };
+  style?: NodePresentation;
   path: string;
   destination?: { kind: "map_link" | "external_link"; url: string };
 };
@@ -314,6 +323,34 @@ export class DocumentSession {
           );
         return vocabulary[type];
       };
+      const styleRules = new Map<string, ReturnType<typeof parseNodeStyle>>();
+      const ruleSyntax = doc.get("node_styles", true);
+      const resolvedRules = isAlias(ruleSyntax)
+        ? ruleSyntax.resolve(doc)
+        : ruleSyntax;
+      // JS objects reorder integer-looking keys. CSS rule order is the author's
+      // YAML order, not Object.entries order after structural validation.
+      const ruleNames = isMap(resolvedRules)
+        ? resolvedRules.items.map((pair) =>
+            String(isScalar(pair.key) ? pair.key.value : ""),
+          )
+        : Object.keys(result.data.node_styles ?? {});
+      for (const name of ruleNames) {
+        const style = result.data.node_styles?.[name];
+        if (style === undefined) continue;
+        try {
+          styleRules.set(name, parseNodeStyle(style));
+        } catch (error) {
+          throw Object.assign(
+            error instanceof Error ? error : new Error(String(error)),
+            {
+              offset:
+                (doc.getIn(["node_styles", name], true) as Node | undefined)
+                  ?.range?.[0] ?? 0,
+            },
+          );
+        }
+      }
       const records: RecordNode[] = [];
       const edges: Connection[] = [];
       const bindings: Binding[] = [];
@@ -418,6 +455,28 @@ export class DocumentSession {
             ? (content.summary ?? "")
             : (content.full_text ?? fallback).split(/\r?\n/, 1)[0];
         const key = `thought:${++this.serial}`;
+        let style: NodePresentation | undefined;
+        try {
+          style = resolveNodeStyle(content.classes, content.style, styleRules);
+        } catch (error) {
+          throw Object.assign(
+            error instanceof Error ? error : new Error(String(error)),
+            {
+              offset:
+                (
+                  doc.getIn(
+                    [
+                      ...path,
+                      content.classes?.some((name) => !styleRules.has(name))
+                        ? "classes"
+                        : "style",
+                    ],
+                    true,
+                  ) as Node | undefined
+                )?.range?.[0] ?? span.start,
+            },
+          );
+        }
         const thought: Thought = {
           key,
           id: content.id,
@@ -427,6 +486,7 @@ export class DocumentSession {
           position: content.position,
           path: pathName,
           ...(destination ? { destination } : {}),
+          ...(style ? { style } : {}),
         };
         records.push({ thought, span, ast });
         bindings.push({ key, kind: "definition", span });

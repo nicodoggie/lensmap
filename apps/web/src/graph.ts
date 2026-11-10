@@ -22,6 +22,9 @@ export interface GraphNode extends Point {
   branch: Branch;
   unresolved: boolean;
   destination?: Thought["destination"];
+  style?: Thought["style"];
+  baseRadius?: number;
+  position?: Point;
 }
 export interface GraphEdge {
   key: string;

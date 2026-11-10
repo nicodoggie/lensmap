@@ -1,0 +1,43 @@
+version: v1
+node_styles:
+  important:
+    background-color: "#293246"
+    color: "#fff1c2"
+    border: "3px solid #d9a441"
+    font-family: "Georgia, serif"
+    --lensmap-scale: 1.4
+  tentative: |
+    border-style: dashed;
+    font-style: italic;
+  spacious:
+    padding: 12px
+    font-size: 16px
+    --lensmap-scale: auto
+nodes:
+  - id: start
+    summary: A starting idea
+    classes: [important]
+    connections:
+      - id: hypothesis
+        summary: A promising but **untested** idea
+        classes: [tentative, important]
+        style:
+          --lensmap-icon: "💡"
+      - id: explanation
+        summary: "This longer summary grows its circle to contain the text, rather than shrinking its font."
+        classes: [spacious]
+        style: "background-color: #243346; color: #def5e7;"
+        full_text: |
+          # The whole note remains ordinary Markdown
+
+          Only the collapsed summary determines automatic circle sizing.
+          Expanded prose does not create a giant node.
+        connections:
+          - node_id: hypothesis
+      - type: map_link
+        url: "#explanation"
+        summary: A portal to the longer explanation
+        style: |
+          --lensmap-scale: auto;
+          background-color: #332847;
+          border: 2px dotted #caadeb;

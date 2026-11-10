@@ -37,9 +37,16 @@ export function neighbourhood(
     neighbours.reduce((sum, n, i) => sum + Math.sin(n.bearing - i * step), 0),
     neighbours.reduce((sum, n, i) => sum + Math.cos(n.bearing - i * step), 0),
   );
+  const maximum = Math.max(
+    nodeRadius,
+    ...graph.nodes
+      .filter((n) => visible.has(n.key))
+      .map((n) => n.baseRadius ?? nodeRadius),
+  );
   const radius = Math.max(
+    (centre.baseRadius ?? nodeRadius) + maximum + 24,
     260,
-    (2 * nodeRadius + 24) /
+    (2 * maximum + 24) /
       (2 * Math.sin(Math.PI / Math.max(2, neighbours.length))),
   );
   const nodes = [

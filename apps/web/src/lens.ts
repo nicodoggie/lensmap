@@ -60,15 +60,15 @@ export function zoomCamera(camera: Camera, factor: number): Camera {
 
 /** Fit an undistorted view, including node extents and a viewport margin. */
 export function fitCamera(
-  points: readonly Point[],
+  points: readonly (Point & { baseRadius?: number })[],
   size: Viewport,
   radius: number,
 ): Camera {
   if (points.length === 0) return { x: 0, y: 0, zoom: 1 };
-  const minX = Math.min(...points.map((p) => p.x)) - radius;
-  const maxX = Math.max(...points.map((p) => p.x)) + radius;
-  const minY = Math.min(...points.map((p) => p.y)) - radius;
-  const maxY = Math.max(...points.map((p) => p.y)) + radius;
+  const minX = Math.min(...points.map((p) => p.x - (p.baseRadius ?? radius)));
+  const maxX = Math.max(...points.map((p) => p.x + (p.baseRadius ?? radius)));
+  const minY = Math.min(...points.map((p) => p.y - (p.baseRadius ?? radius)));
+  const maxY = Math.max(...points.map((p) => p.y + (p.baseRadius ?? radius)));
   return {
     x: (minX + maxX) / 2,
     y: (minY + maxY) / 2,

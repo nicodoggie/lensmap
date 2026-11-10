@@ -1,6 +1,6 @@
 import type { Point } from "./lens";
 
-type Circle = Point & { scale: number };
+type Circle = Point & { scale: number; baseRadius?: number };
 
 /** Limit unit-zoom circle sizes only. Centres, source layout and payloads stay exact. */
 export function limitMagnification<T extends Circle>(
@@ -11,7 +11,9 @@ export function limitMagnification<T extends Circle>(
   const amount = Math.max(0, Math.min(1, strength));
   if (amount === 0 || points.length < 2)
     return points.map((point) => ({ ...point }));
-  const radii = points.map((point) => point.scale * nodeRadius);
+  const radii = points.map(
+    (point) => point.scale * (point.baseRadius ?? nodeRadius),
+  );
   const minimum = radii.map((radius) => Math.min(radius, 2));
   const limited = [...radii];
 
@@ -45,6 +47,9 @@ export function limitMagnification<T extends Circle>(
 
   return points.map((point, index) => ({
     ...point,
-    scale: point.scale + (limited[index] / nodeRadius - point.scale) * amount,
+    scale:
+      point.scale +
+      (limited[index] / (point.baseRadius ?? nodeRadius) - point.scale) *
+        amount,
   }));
 }
