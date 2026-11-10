@@ -2,11 +2,12 @@
 
 ## Status and relationship to existing behavior
 
-**Implemented in the source checkout; unpublished.** Nico authorized this design
+**Published in the 0.3.0 npm cohort.** Nico authorized this design
 for implementation on 2026-11-10. The owning schema, engine, shared viewer,
 project-aware language server and Astro/Starlight integration accept declarations.
 See [local qualification and native limits](verification/custom-connection-types.md).
-This is not a claim that a new npm runtime has been published.
+Publication and a fresh anonymous registry-only consumer are verified in
+[npm releases](npm-release.md); see [0.3.0 notes](releases/0.3.0.md).
 
 The [default connection specification](default-connections.md) remains the
 contract for existing thoughts, relationships, portals, navigation and host

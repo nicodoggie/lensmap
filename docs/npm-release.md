@@ -1,11 +1,51 @@
 # npm package preparation and releases
 
-## Published Astro cohort (0.2.1)
+## Published presentation/vocabulary cohort (0.3.0)
 
 `@lensmap/document`, `@lensmap/language-server`, `@lensmap/astro-loader` and
-`@lensmap/starlight` are published at **0.2.1**, with **latest** pointing to that
-version for all four packages. They remain experimental packages. Publication
-and registry-only consumption were verified on **2026-11-07** against retained
+`@lensmap/starlight` are published at **0.3.0**, with **latest** pointing to that
+version for all four packages. Publication and anonymous registry-only
+consumption were verified on **2026-11-10**. The qualified source is
+`d822cca7074846067ec9f2f16cccb163be228b56`, fast-forwarded and pushed to `main`.
+See [0.3.0 release notes](releases/0.3.0.md) for custom connection vocabularies,
+CSS node styling, measured sizing, upgrade guidance and limits.
+
+Native `pnpm test:packages` qualified the versioned four-package tarballs before
+publication. The registry's package versions, exact cohort dependencies,
+`latest` tags and SHA512 integrities matched those retained artifacts; all four
+publicly downloaded archives matched the qualified bytes exactly. The runtime
+packages' historical `next: 0.1.1` tags were left unchanged.
+
+A fresh anonymous, registry-only production install passed public exports,
+custom connection/node-style analysis, native Astro rendering and denied-source
+checks, Starlight production/no-JavaScript/responsive reading and live-dev
+vocabulary reload, installed CLI/generated settings and all four installed-server
+Chromium bridge tests. No local tarball paths or workspace aliases supplied the
+installed packages. Desktop/mobile captures were inspected. The disposable
+consumer was removed. This does not qualify a new Zed extension or its managed
+runtime download; that separately pinned extension was not changed.
+
+The release used the qualified archives through native npm staging, not directory
+publication or a rebuild. Nico completed human publication approvals; the
+waiting CLI approval was stopped when he published the remaining stages.
+No publication was retried. Local/registry stage-download checks retained exact
+artifact identity. No OIDC/trust settings were changed, and no `npm-v0.3.0` tag
+was pushed to start a second automatic publisher.
+
+Ignored evidence is retained under `artifacts/npm/release-0.3.0-latest/`:
+`manifest.json` binds source and original tarballs, `verified-stages.json` records
+downloaded staged-byte identity, `qualification.log` records packed-consumer
+acceptance, and `registry-consumption.json` plus `registry-qualification.log`
+record public registry identity and actual anonymous consumer checks. Qualified,
+staged-download and registry-download tarballs and native consumer screenshots
+remain alongside those receipts.
+
+## Earlier Astro cohort (0.2.1)
+
+`@lensmap/document`, `@lensmap/language-server`, `@lensmap/astro-loader` and
+`@lensmap/starlight` were published at **0.2.1**, with **latest** pointing to that
+version for all four packages at the time. They remain experimental packages.
+Publication and registry-only consumption were verified on **2026-11-07** against retained
 tarballs from source commit `ba247954d3b8a20dc740229fca2bbbcefa7a7f85`.
 See the [shipping plan](plans/2026-11-07-astro-packages.md) for the original scope.
 

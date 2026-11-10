@@ -35,5 +35,6 @@ open it using the local editor-bridge runtime described in
 
 See [the styling contract](../../docs/node-styling.md) for the supported CSS
 profile and intentionally unsupported features. Maps do not load external CSS,
-fonts or executable animation code. This is source-checkout functionality, not
-an assertion that the current public npm version contains it.
+fonts or executable animation code. This functionality is published in the
+[0.3.0 npm cohort](../../docs/releases/0.3.0.md); the development launch route
+above still uses the checkout and does not publish the example files.

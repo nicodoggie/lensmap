@@ -102,7 +102,9 @@ The engine, shared viewer, language-server snapshots and Astro/Starlight paths
 implement this profile. The generated experimental JSON Schema includes both
 style forms. See the self-contained
 [node-styling example](../examples/node-styling/README.md) for a checkout launch
-route and authoring examples. This is not yet a published npm feature.
+route and authoring examples. This feature is published in the **0.3.0 npm
+cohort**; see [release verification](npm-release.md) and
+[upgrade notes](releases/0.3.0.md).
 
 Qualification from `/home/ensu/Projects/lensmap`:
 
@@ -136,4 +138,6 @@ radius, which can leave extra space in mixed-size graphs. Hidden changed content
 keeps its prior radius only until remount and remeasurement. No fresh native Zed
 UI, Firefox/WebKit, physical touch or large-graph performance qualification is
 claimed. Animations and external style/font loading remain outside this slice.
-No package version bump, push or publication was performed.
+The implementation checkpoint itself did not bump versions or publish. The
+subsequent 0.3.0 release qualified versioned tarballs and an anonymous registry-only
+consumer before closeout; the release record above owns that publication proof.

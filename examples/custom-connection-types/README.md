@@ -52,5 +52,6 @@ remains an ordinary external-link thought. This command proves analysis, not
 browser painting or permission to open that URL.
 
 See the [declaration contract](../../docs/custom-connection-types.md) for the
-complete fields, layering rules and host boundaries. These changes are in the
-source checkout; this example does not assert a new npm release.
+complete fields, layering rules and host boundaries. This functionality is
+published in the [0.3.0 npm cohort](../../docs/releases/0.3.0.md); the commands
+above exercise the checkout rather than silently selecting a global runtime.
