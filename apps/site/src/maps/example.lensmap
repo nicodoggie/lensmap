@@ -1,0 +1,41 @@
+version: v1
+connection_types:
+  reveals:
+    extends: precedes
+    text: reveals
+    reverse_text: is revealed by
+    line-color: "#d4ae68"
+node_styles:
+  clue:
+    color: "#fff1cd"
+    background-color: "#3b3430"
+    border: "2px solid #d4ae68"
+    --lensmap-scale: 1.4
+nodes:
+  - id: expedition
+    summary: A route through the hills
+    position: { x: 0, y: 0 }
+    full_text: |
+      # A route through the hills
+      Write the idea first. Add detail when it earns its place.
+    connections:
+      - id: archive
+        summary: Search the archive
+        position: { x: -180, y: 190 }
+        connections:
+          - type: reveals
+            summary: A forgotten footpath
+            position: { x: -180, y: 390 }
+            classes: [clue]
+            connections:
+              - node_id: crossing
+      - summary: Ask the ferryman
+        position: { x: 180, y: 190 }
+        style: "color: #b5e6d2; border-style: dashed;"
+        connections:
+          - id: crossing
+            summary: Find a safe crossing
+            position: { x: 180, y: 390 }
+            connections:
+              - node_id: expedition
+                type: optional

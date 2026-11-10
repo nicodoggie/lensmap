@@ -1,0 +1,25 @@
+:root {
+  --sl-color-accent-low: #203d3b;
+  --sl-color-accent: #75cbb5;
+  --sl-color-accent-high: #c8f2e2;
+}
+:root[data-theme="light"] {
+  --sl-color-accent-low: #d8f4e9;
+  --sl-color-accent: #246753;
+  --sl-color-accent-high: #153b32;
+}
+.map-example {
+  margin-block: 2rem;
+}
+.map-example .lensmap-viewer {
+  padding: 0;
+}
+.map-example .lensmap-viewer .toolbar .strength {
+  display: none;
+}
+.map-example .lensmap-viewer .map {
+  height: 430px;
+}
+.map-example pre {
+  margin-block-start: 1rem;
+}

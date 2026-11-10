@@ -1,0 +1,57 @@
+version: v1
+node_styles:
+  wordmark:
+    background-color: "#dfeacb"
+    color: "#14261e"
+    border: "2px solid #ecf4df"
+    font-family: "Georgia, serif"
+    font-size: "58px"
+    font-weight: 500
+    --lensmap-scale: 3.25
+  satellite:
+    background-color: "#233f3c"
+    color: "#e8eee2"
+    border: "1px solid #749b88"
+    font-size: "18px"
+    padding: "8px"
+    --lensmap-scale: 2
+nodes:
+  - id: lensmap
+    summary: Lensmap
+    classes: [wordmark]
+    position: {x: 0, y: 0}
+    connections:
+      - id: subtitle
+        summary: Write thoughts. Explore connections.
+        position: {x: -370, y: 150}
+        style:
+          background-color: "#c9b98c"
+          color: "#242921"
+          border: "1px solid #ded0a4"
+          font-family: "Georgia, serif"
+          font-size: "25px"
+          --lensmap-scale: 2.5
+      - id: get-started
+        summary: Get started
+        type: external_link
+        url: docs/getting-started/
+        position: {x: 400, y: -200}
+        classes: [satellite]
+      - id: documentation
+        summary: Documentation
+        type: external_link
+        url: docs/
+        position: {x: 340, y: 0}
+        classes: [satellite]
+      - id: examples
+        summary: Examples
+        type: external_link
+        url: docs/examples/
+        position: {x: 430, y: 210}
+        classes: [satellite]
+      - id: github
+        summary: GitHub
+        type: external_link
+        url: https://github.com/nicodoggie/lensmap
+        position: {x: -360, y: -200}
+        classes: [satellite]

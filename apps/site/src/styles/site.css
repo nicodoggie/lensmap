@@ -1,0 +1,99 @@
+@import url("../styles/hero.css");
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #111e1b;
+  color: #e5ebdc;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+a {
+  color: inherit;
+  text-underline-offset: 0.25em;
+}
+a:focus-visible {
+  outline: 2px solid #e8c17b;
+  outline-offset: 6px;
+}
+.site-header {
+  min-height: 84px;
+  padding: 24px clamp(20px, 5vw, 80px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.site-brand {
+  text-decoration: none;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.06em;
+}
+.site-header nav {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+}
+.site-header nav a {
+  text-decoration: none;
+}
+.site-header nav a:hover {
+  text-decoration: underline;
+}
+.site-footer {
+  padding: 24px clamp(20px, 5vw, 80px);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: #9aad9f;
+  font-size: 12px;
+}
+.site-footer p {
+  margin: 0;
+}
+.hero-fallback {
+  max-width: 850px;
+  margin: 8vh auto;
+  padding: 32px;
+}
+.hero-fallback h1 {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(64px, 12vw, 140px);
+  margin: 0;
+}
+.hero-fallback ul {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+}
+body:has(.hero-map .node) .hero-fallback {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  padding: 0;
+  margin: 0;
+}
+body:has(.hero-map .node) .hero-fallback nav {
+  display: none;
+}
+@media (max-width: 600px) {
+  .site-header {
+    min-height: 72px;
+  }
+  .site-header nav {
+    gap: 16px;
+  }
+  .site-header .header-github {
+    display: none;
+  }
+}

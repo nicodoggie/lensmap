@@ -89,6 +89,22 @@ The default [sample](apps/web/src/sample.yaml) has no custom positions and uses 
 
 After an automatic-layout update, choose **Apply YAML** again to regenerate positions from your current valid draft. Inspect **Overview** for the underlying branch arrangement, then return to Lens. The contour-packing experiment leaves the lens, clearance policy and sample data unchanged; manual pins can still impose conflicting geometry.
 
+### Website workspace
+
+The private `apps/site` workspace contains the interactive Lensmap homepage and
+conventional Starlight documentation. It builds for the GitHub Pages project base
+`/lensmap/`; it is separate from the playground.
+
+```sh
+pnpm exec turbo run build --filter=@lensmap/site
+pnpm --filter @lensmap/site preview --host 127.0.0.1 --port 4321
+# Open http://127.0.0.1:4321/lensmap/
+```
+
+For development after building the workspace dependencies, run
+`pnpm --filter @lensmap/site dev`. See the [site runbook](apps/site/README.md)
+for local checks and the separate deployment approval boundary.
+
 ## Verify
 
 ```sh
@@ -111,6 +127,8 @@ On Arch Linux, Playwright warns that it uses its Ubuntu fallback browser; browse
 ## Workspace
 
 - `apps/web` — React + Vite playground and canvas-first bridge shell sharing a controlled viewer, lens/camera/clearance functions and viewer-owned radial layout. The editable sample is `apps/web/src/sample.yaml`.
+- `apps/site` — private Astro homepage and Starlight docs, reusing the shared
+  viewer with a static `/lensmap/` deployment base.
 - `packages/document` — portable Zod schema, YAML source analysis, revision-bound bindings, session identities, semantic graphs and source-preserving content-edit preparation. No DOM, camera or LSP ownership.
 - `packages/language-server` — stdio language services and authenticated loopback HTTP/SSE bridge over the same attached document sessions.
 - `editors/zed` — Rust/Wasm component launcher with a pinned Zed-managed npm runtime or explicit local binary override, not a native renderer. Extension ID `lensmap-lsp`; language-server/settings key `lensmap`. No published extension yet.

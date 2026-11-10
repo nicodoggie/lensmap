@@ -1,0 +1,25 @@
+---
+import { Code } from "@astrojs/starlight/components";
+import { DocumentSession } from "@lensmap/document";
+import { layoutSemanticGraph } from "../../../web/src/embed";
+import ExampleMap from "./ExampleMap";
+
+interface Props {
+  source: string;
+  title: string;
+}
+const { source, title } = Astro.props;
+const snapshot = new DocumentSession(
+  `site:example:${title}`,
+  source,
+).snapshot();
+if (!snapshot.valid || !snapshot.graph)
+  throw new Error(
+    `Invalid example ${title}: ${JSON.stringify(snapshot.diagnostics)}`,
+  );
+const graph = layoutSemanticGraph(snapshot.graph);
+---
+<section class="map-example" aria-label={title}>
+  <div class="not-content" data-example-viewer><ExampleMap graph={graph} client:only="react" /></div>
+  <details open><summary>Source — copy it and make it yours</summary><Code code={source} lang="yaml" /></details>
+</section>

@@ -1,0 +1,30 @@
+---
+title: Source and live examples
+description: One source file, shown as code and rendered as a real interactive map.
+sidebar:
+  order: 7
+---
+
+import MapExample from '../../../components/MapExample.astro';
+import source from '../../../maps/example.lensmap?raw';
+
+## Two paths, one crossing
+
+The archive and ferryman branches converge on the **same** crossing thought.
+The optional connection returns to the starting idea. Neither convergence nor a
+cycle requires copying the destination's content.
+
+The `reveals` connection has custom wording and inherits its arrow from
+`precedes`. The clue uses a reusable node class; the ferryman uses inline CSS.
+The live viewer and copyable code below consume the same source file.
+
+<MapExample source={source} title="Expedition example" />
+
+Select a thought, switch from Overview to Lens, or explore its neighbourhood.
+The controls are the shared viewer, not a diagram generated just for this page.
+
+## Keep elaboration optional
+
+Remove the style declarations and custom type if they do not help your notes.
+Plain strings and untyped connections remain valid. Add stable IDs only where
+references need them, then keep writing.
