@@ -2,7 +2,7 @@
   "name": "@lensmap/document",
   "license": "MIT",
   "description": "Experimental Lensmap document engine: YAML analysis, semantic graphs and revision-bound source edits",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "files": [
     "dist"
   ],

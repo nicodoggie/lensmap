@@ -1,5 +1,5 @@
 {
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "license": "MIT",
   "files": [
@@ -42,15 +42,15 @@
     "yaml": "2.9.1"
   },
   "peerDependencies": {
-    "astro": "7.4.0",
-    "@astrojs/mdx": "8.1.0"
+    "@astrojs/mdx": "8.1.0",
+    "astro": "7.4.0"
   },
   "devDependencies": {
-    "astro": "7.4.0",
     "@astrojs/mdx": "8.1.0",
+    "@types/node": "24.19.2",
+    "astro": "7.4.0",
     "esbuild": "0.28.2",
-    "typescript": "7.0.2",
-    "@types/node": "24.19.2"
+    "typescript": "7.0.2"
   },
   "peerDependenciesMeta": {
     "@astrojs/mdx": {
