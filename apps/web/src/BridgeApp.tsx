@@ -16,6 +16,7 @@ import { NavigationNotice, useMapNavigation } from "./use-map-navigation";
 interface LayoutCache {
   attachmentId?: string;
   revision: number | null;
+  generation?: number;
   semantic: SemanticGraph;
   layout: GraphData;
 }
@@ -143,6 +144,7 @@ export default function BridgeApp() {
     if (
       previous?.attachmentId === document.attachmentId &&
       previous?.revision === document.graphRevision &&
+      previous?.generation === document.graphGeneration &&
       JSON.stringify(previous.semantic) === JSON.stringify(document.graph)
     )
       return previous.layout;
@@ -153,6 +155,7 @@ export default function BridgeApp() {
     layouts.current.set(document.uri, {
       attachmentId: document.attachmentId,
       revision: document.graphRevision,
+      generation: document.graphGeneration,
       semantic: document.graph,
       layout,
     });

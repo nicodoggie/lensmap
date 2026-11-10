@@ -55,7 +55,11 @@ export default function ConnectionChooser({
                   {candidate.routes.map((route, routeIndex) => (
                     <span key={`${route.edge.key}:${route.direction}`}>
                       {routeIndex > 0 ? " · " : ""}
-                      {connectionWording(route.edge.type, route.direction)}
+                      {connectionWording(
+                        route.edge.type,
+                        route.direction,
+                        route.edge.presentation,
+                      )}
                       {` (${route.direction} ${route.edge.kind === "branch" ? "branch" : "cross-link"})`}
                     </span>
                   ))}

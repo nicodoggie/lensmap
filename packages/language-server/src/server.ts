@@ -12,10 +12,13 @@ import {
   connectionWording,
   DocumentSession,
   type DocumentSnapshot,
+  offsetToPosition,
   type PreparedEdit,
+  parseVocabulary,
   positionToOffset,
   type SourcePosition,
   type SourceRange,
+  vocabularyLocations,
 } from "@lensmap/document";
 import {
   CodeActionKind,
@@ -25,6 +28,13 @@ import {
   StreamMessageWriter,
   TextDocumentSyncKind,
 } from "vscode-languageserver/node";
+import { ProjectVocabularies } from "./vocabulary-project.js";
+import {
+  analyzeVocabularyForTooling,
+  declaresType,
+  typeNameAt,
+  typeValueRangeAt,
+} from "./vocabulary-tooling.js";
 
 export interface RevealTarget {
   uri: string;
@@ -49,6 +59,8 @@ export interface ServerHandle {
 interface Entry {
   session: DocumentSession;
   timer?: ReturnType<typeof setTimeout>;
+  loading?: boolean;
+  vocabularyRequest?: number;
 }
 type Message =
   | { type: "session"; documents: DocumentSnapshot[]; activeUri: string | null }
@@ -169,6 +181,20 @@ export async function startServer(
   let closePromise: Promise<void> | undefined;
   let origin = "";
   let previewURL = "";
+  let workspaceUris: string[] = [];
+  const projects = new ProjectVocabularies((root, input) => {
+    if (closed) return;
+    for (const [uri, entry] of entries) {
+      if (projects.rootFor(uri) !== root) continue;
+      entry.vocabularyRequest = (entry.vocabularyRequest ?? 0) + 1;
+      entry.loading = false;
+      if (entry.timer) clearTimeout(entry.timer);
+      entry.timer = undefined;
+      entry.session.setVocabulary(input);
+      publish(entry);
+    }
+    for (const uri of projects.resources(root)) void publishVocabulary(uri);
+  });
   const envelope = (): Message => ({
     type: "session",
     documents: [...entries.values()].map(({ session }) => session.snapshot()),
@@ -203,6 +229,53 @@ export async function startServer(
       );
     return entry;
   };
+  const reportedExternal = new Set<string>();
+  const externalDiagnostics = (uri: string) => {
+    const result = [...entries.values()].flatMap(({ session }) =>
+      session.snapshot().diagnostics.filter((item) => item.uri === uri),
+    );
+    const buffer = projects.buffer(uri);
+    if (!result.length && buffer) {
+      const parsed = uri.endsWith(".lenstypes")
+        ? parseVocabulary(buffer.source, uri)
+        : projects.cachedInput(uri);
+      if (parsed?.error && (!parsed.uri || parsed.uri === uri)) {
+        const at = offsetToPosition(buffer.source, parsed.offset ?? 0);
+        result.push({
+          message: parsed.error,
+          uri,
+          range: { start: at, end: at },
+        });
+      }
+    }
+    return [
+      ...new Map(result.map((item) => [JSON.stringify(item), item])).values(),
+    ];
+  };
+  const publishExternal = () => {
+    const current = new Set([
+      ...projects.resources(),
+      ...[...entries.values()].flatMap(({ session }) =>
+        session
+          .snapshot()
+          .diagnostics.flatMap((item) =>
+            item.uri && item.uri !== session.uri ? [item.uri] : [],
+          ),
+      ),
+    ]);
+    for (const uri of new Set([...reportedExternal, ...current])) {
+      void connection.sendDiagnostics({
+        uri,
+        diagnostics: externalDiagnostics(uri).map((item) => ({
+          ...item,
+          severity: 1,
+          source: "lensmap",
+        })),
+      });
+    }
+    reportedExternal.clear();
+    for (const uri of current) reportedExternal.add(uri);
+  };
   const publish = (entry: Entry) => {
     const snapshot = entry.session.snapshot();
     emit({ type: "snapshot", snapshot });
@@ -210,19 +283,76 @@ export async function startServer(
       void connection.sendDiagnostics({
         uri: snapshot.uri,
         version: snapshot.revision,
-        diagnostics: snapshot.diagnostics.map((item) => ({
-          ...item,
-          severity: 1,
-          source: "lensmap",
-        })),
+        diagnostics: snapshot.diagnostics
+          .filter((item) => !item.uri || item.uri === snapshot.uri)
+          .map((item) => ({
+            ...item,
+            severity: 1,
+            source: "lensmap",
+          })),
       });
+    publishExternal();
     for (const observer of observers) observer();
   };
   const analyze = (entry: Entry) => {
     if (entry.timer) clearTimeout(entry.timer);
     entry.timer = undefined;
+    if (entry.loading) return;
     entry.session.analyze();
     publish(entry);
+  };
+  const loadVocabulary = async (entry: Entry) => {
+    const uri = entry.session.uri;
+    const request = (entry.vocabularyRequest ?? 0) + 1;
+    entry.vocabularyRequest = request;
+    entry.loading = true;
+    const input = await projects.forUri(uri);
+    if (
+      closed ||
+      entries.get(uri) !== entry ||
+      entry.vocabularyRequest !== request
+    )
+      return;
+    entry.loading = false;
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.timer = undefined;
+    entry.session.setVocabulary(input);
+    publish(entry);
+  };
+  const vocabularyContext = async (uri: string) => {
+    const input = await projects.forUri(uri);
+    const buffer = projects.buffer(uri);
+    const related = [...entries].filter(
+      ([mapUri]) => projects.rootFor(mapUri) === projects.rootFor(uri),
+    );
+    const contextualMap =
+      input.uri === uri
+        ? (related.find(([mapUri]) => mapUri === activeUri) ?? related[0])?.[1]
+        : undefined;
+    return {
+      ...analyzeVocabularyForTooling(
+        uri,
+        input,
+        entries.get(uri)?.session.source ?? contextualMap?.session.source,
+        buffer && uri.endsWith(".lenstypes") ? buffer.source : undefined,
+      ),
+      contextualUri: contextualMap?.session.uri,
+    };
+  };
+  const publishVocabulary = async (uri: string) => {
+    const buffer = projects.buffer(uri);
+    if (!buffer || closed) return;
+    await projects.forUri(uri);
+    if (closed || projects.buffer(uri) !== buffer) return;
+    void connection.sendDiagnostics({
+      uri,
+      version: buffer.version,
+      diagnostics: externalDiagnostics(uri).map((item) => ({
+        ...item,
+        severity: 1,
+        source: "lensmap",
+      })),
+    });
   };
   const waitForReadback = (entry: Entry, base: number, expected: string) =>
     new Promise<boolean>((done) => {
@@ -613,6 +743,7 @@ export async function startServer(
   const closeHttp = () => {
     if (closePromise) return closePromise;
     closed = true;
+    projects.dispose();
     for (const entry of entries.values())
       if (entry.timer) clearTimeout(entry.timer);
     for (const stream of streams) stream.end();
@@ -629,6 +760,10 @@ export async function startServer(
     connection.dispose();
   };
   connection.onInitialize((params) => {
+    workspaceUris =
+      params.workspaceFolders?.map((folder) => folder.uri) ??
+      (params.rootUri ? [params.rootUri] : []);
+    projects.setRoots(workspaceUris);
     canApply = params.capabilities.workspace?.applyEdit === true;
     canShowDocument =
       params.capabilities.window?.showDocument?.support === true;
@@ -638,6 +773,10 @@ export async function startServer(
         textDocumentSync: TextDocumentSyncKind.Incremental,
         documentHighlightProvider: true,
         definitionProvider: true,
+        hoverProvider: true,
+        workspace: {
+          workspaceFolders: { supported: true, changeNotifications: true },
+        },
         completionProvider: { triggerCharacters: [":", " "] },
         codeActionProvider: true,
         executeCommandProvider: {
@@ -651,7 +790,13 @@ export async function startServer(
       serverInfo: { name: "Lensmap", version: "0.0.0" },
     };
   });
-  connection.onDidOpenTextDocument(({ textDocument: document }) => {
+  connection.onDidOpenTextDocument(async ({ textDocument: document }) => {
+    if (shutdown || closed) return;
+    if (projects.isResource(document.uri)) {
+      await projects.open(document.uri, document.text, document.version);
+      await publishVocabulary(document.uri);
+      return;
+    }
     if (
       shutdown ||
       closed ||
@@ -660,21 +805,40 @@ export async function startServer(
       return;
     const previous = entries.get(document.uri);
     if (previous?.timer) clearTimeout(previous.timer);
-    const entry = {
+    const entry: Entry = {
       session: new DocumentSession(
         document.uri,
         document.text,
         document.version,
+        { error: "Project vocabulary is loading." },
       ),
     };
+    entry.session.receive(document.text, document.version);
     entries.set(document.uri, entry);
     activeUri = document.uri;
     emit(envelope());
     publish(entry);
+    await loadVocabulary(entry);
   });
   connection.onDidChangeTextDocument(
-    ({ textDocument: document, contentChanges }) => {
+    async ({ textDocument: document, contentChanges }) => {
       if (shutdown || closed) return;
+      const vocabulary = projects.buffer(document.uri);
+      if (vocabulary) {
+        if (document.version <= vocabulary.version) return;
+        let source = vocabulary.source;
+        for (const change of contentChanges) {
+          if ("range" in change) {
+            const start = positionToOffset(source, change.range.start);
+            const end = positionToOffset(source, change.range.end);
+            if (end < start) return;
+            source = source.slice(0, start) + change.text + source.slice(end);
+          } else source = change.text;
+        }
+        await projects.open(document.uri, source, document.version);
+        await publishVocabulary(document.uri);
+        return;
+      }
       const entry = entries.get(document.uri);
       if (!entry || document.version <= entry.session.revision) return;
       let source = entry.session.source;
@@ -713,10 +877,16 @@ export async function startServer(
       }
     },
   );
-  connection.onDidCloseTextDocument(({ textDocument }) => {
+  connection.onDidCloseTextDocument(async ({ textDocument }) => {
+    if (projects.buffer(textDocument.uri)) {
+      await projects.close(textDocument.uri);
+      publishExternal();
+      return;
+    }
     const entry = entries.get(textDocument.uri);
     if (entry?.timer) clearTimeout(entry.timer);
     entries.delete(textDocument.uri);
+    publishExternal();
     if (activeUri === textDocument.uri)
       activeUri = entries.keys().next().value ?? null;
     emit(envelope());
@@ -729,24 +899,83 @@ export async function startServer(
     focus(textDocument.uri, at, false);
     return entry.session.highlights(at).map((range) => ({ range, kind: 1 }));
   });
-  connection.onDefinition(({ textDocument, position: at }) => {
+  connection.onDefinition(async ({ textDocument, position: at }) => {
     const session = entries.get(textDocument.uri)?.session;
+    const source = session?.source ?? projects.buffer(textDocument.uri)?.source;
+    const name = source === undefined ? undefined : typeNameAt(source, at);
+    if (name && source !== undefined) {
+      const { input, contextualUri } = await vocabularyContext(
+        textDocument.uri,
+      );
+      const sources = [
+        { uri: textDocument.uri, source },
+        ...(contextualUri
+          ? [
+              {
+                uri: contextualUri,
+                source: entries.get(contextualUri)?.session.source,
+              },
+            ]
+          : []),
+        { uri: input.uri, source: input.source },
+      ];
+      for (const candidate of sources) {
+        if (!candidate.uri || candidate.source === undefined) continue;
+        const locations = vocabularyLocations(candidate.source, candidate.uri);
+        if (!Object.hasOwn(locations, name)) continue;
+        const span = locations[name].name;
+        return {
+          uri: candidate.uri,
+          range: {
+            start: offsetToPosition(candidate.source, span.start),
+            end: offsetToPosition(candidate.source, span.end),
+          },
+        };
+      }
+      return null;
+    }
     const key = session?.locate(at);
     const range = key ? session?.definition(key) : undefined;
     return range ? { uri: textDocument.uri, range } : null;
   });
-  connection.onCompletion(({ textDocument, position: at }) => {
+  connection.onCompletion(async ({ textDocument, position: at }) => {
     const session = entries.get(textDocument.uri)?.session;
-    if (!session) return [];
-    const line =
-      session.source.split(/\r?\n/)[at.line]?.slice(0, at.character) ?? "";
-    if (/^\s*(?:-\s*)?type:\s*[^#]*$/.test(line))
-      return ConnectionTypeSchema.options.map((type) => ({
+    const source = session?.source ?? projects.buffer(textDocument.uri)?.source;
+    if (source === undefined) return [];
+    const line = source.split(/\r?\n/)[at.line]?.slice(0, at.character) ?? "";
+    const prefix = /^\s*(?:-\s*)?(?:type|extends)\s*:\s*/.exec(line);
+    const scalarRange = prefix ? typeValueRangeAt(source, at) : undefined;
+    if (
+      prefix &&
+      (scalarRange || !line.slice(prefix[0].length).includes("#"))
+    ) {
+      const { snapshot, input } = await vocabularyContext(textDocument.uri);
+      const vocabulary = snapshot.vocabulary ?? session?.snapshot().vocabulary;
+      const names = new Set([
+        ...ConnectionTypeSchema.options,
+        ...Object.keys(vocabulary ?? {}),
+        ...Object.keys(input.declarations ?? {}),
+      ]);
+      return [...names].map((type) => ({
         label: type,
         kind: CompletionItemKind.EnumMember,
-        detail: connectionWording(type, "outgoing"),
+        detail: connectionWording(
+          type,
+          "outgoing",
+          vocabulary && Object.hasOwn(vocabulary, type)
+            ? vocabulary[type]
+            : undefined,
+        ),
+        textEdit: {
+          range: scalarRange ?? {
+            start: { line: at.line, character: prefix[0].length },
+            end: at,
+          },
+          newText: JSON.stringify(type),
+        },
       }));
-    if (!session.snapshot().valid || session.snapshot().pending) return [];
+    }
+    if (!session?.snapshot().valid || session.snapshot().pending) return [];
     if (!/^\s*(?:-\s*)?node_id:\s*[^#]*$/.test(line)) return [];
     return (
       session.snapshot().graph?.nodes.flatMap((node) =>
@@ -762,6 +991,50 @@ export async function startServer(
       ) ?? []
     );
   });
+  connection.onHover(async ({ textDocument, position: at }) => {
+    const source =
+      entries.get(textDocument.uri)?.session.source ??
+      projects.buffer(textDocument.uri)?.source;
+    if (source === undefined) return null;
+    const name = typeNameAt(source, at);
+    if (!name) return null;
+    const { snapshot, input, contextualUri } = await vocabularyContext(
+      textDocument.uri,
+    );
+    const registry = snapshot.vocabulary ?? {};
+    const definition = Object.hasOwn(registry, name)
+      ? registry[name]
+      : undefined;
+    if (!definition) return null;
+    const origin = declaresType(source, name)
+      ? textDocument.uri
+      : contextualUri &&
+          declaresType(entries.get(contextualUri)?.session.source ?? "", name)
+        ? contextualUri
+        : Object.hasOwn(input.declarations ?? {}, name)
+          ? input.uri
+          : "built-in";
+    return {
+      contents: {
+        kind: "plaintext",
+        value: `${name} (${definition.coreKind})\n${definition.text} / ${definition.reverseText}\nDefined in ${origin ?? "project vocabulary"}`,
+      },
+    };
+  });
+  connection.onNotification(
+    "workspace/didChangeWorkspaceFolders",
+    (params: {
+      event: { added: { uri: string }[]; removed: { uri: string }[] };
+    }) => {
+      const deleted = new Set(params.event.removed.map((folder) => folder.uri));
+      workspaceUris = [
+        ...workspaceUris.filter((uri) => !deleted.has(uri)),
+        ...params.event.added.map((folder) => folder.uri),
+      ];
+      projects.setRoots(workspaceUris);
+      for (const entry of entries.values()) void loadVocabulary(entry);
+    },
+  );
   connection.onCodeAction(({ textDocument, range }) =>
     entries.has(textDocument.uri)
       ? [

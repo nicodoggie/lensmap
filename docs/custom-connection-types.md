@@ -2,10 +2,11 @@
 
 ## Status and relationship to existing behavior
 
-**Consolidated design for review; not implemented.** This document records the
-agreed custom-vocabulary design and makes its technical completion defaults
-explicit. It does not authorize implementation or claim that the current
-experimental schema accepts these examples.
+**Implemented in the source checkout; unpublished.** Nico authorized this design
+for implementation on 2026-11-10. The owning schema, engine, shared viewer,
+project-aware language server and Astro/Starlight integration accept declarations.
+See [local qualification and native limits](verification/custom-connection-types.md).
+This is not a claim that a new npm runtime has been published.
 
 The [default connection specification](default-connections.md) remains the
 contract for existing thoughts, relationships, portals, navigation and host
@@ -13,10 +14,11 @@ permissions. This design adds author-defined vocabulary and presentation to
 that system, not a new graph model or executable plugin mechanism.
 
 `version: v1` remains experimental. The current
-[authoring schema](../packages/document/src/v1/schema.ts) accepts only the
-supplied type names and has no `connection_types` field. A future implementation
-must update the owning schema, analysis and consumers together rather than
-making the viewer alone accept unknown names.
+[authoring schema](../packages/document/src/v1/schema.ts) accepts exact authored
+names and an optional `connection_types` mapping. The engine validates names
+against the effective vocabulary; an undeclared name is still an error. See the
+[implementation plan](plans/custom-connection-types.md) and the
+[shared-vocabulary example](../examples/custom-connection-types/README.md).
 
 ## Purpose and scope
 
@@ -131,16 +133,16 @@ All fields are optional. An empty declaration creates a neutral custom type or
 leaves an already defined name unchanged. Unknown fields and null field values
 are errors; omission and an explicit reset value are different operations.
 
-| Field | Accepted value | Role |
-| --- | --- | --- |
-| `extends` | One exact built-in or custom type name | Select an inherited definition. |
-| `stroke-width` | A nonnegative finite number or SVG-style CSS length/percentage value | Set the connector's base width. Zero is valid. |
-| `line-style` | `solid`, `dashed`, `dotted` | Select a line preset. |
-| `line-color` | `auto` or a CSS colour value | Use branch colouring or an explicit connector colour. |
-| `start-marker` | `none`, `arrow`, `bar`, `circle`, `diamond` | Decorate the authored origin. |
-| `end-marker` | The same marker set | Decorate the authored destination. |
-| `text` | A plain relationship phrase | Read from origin to destination. |
-| `reverse_text` | A plain relationship phrase | Read from destination to origin. |
+| Field          | Accepted value                                                       | Role                                                  |
+| -------------- | -------------------------------------------------------------------- | ----------------------------------------------------- |
+| `extends`      | One exact built-in or custom type name                               | Select an inherited definition.                       |
+| `stroke-width` | A nonnegative finite number or SVG-style CSS length/percentage value | Set the connector's base width. Zero is valid.        |
+| `line-style`   | `solid`, `dashed`, `dotted`                                          | Select a line preset.                                 |
+| `line-color`   | `auto` or a CSS colour value                                         | Use branch colouring or an explicit connector colour. |
+| `start-marker` | `none`, `arrow`, `bar`, `circle`, `diamond`                          | Decorate the authored origin.                         |
+| `end-marker`   | The same marker set                                                  | Decorate the authored destination.                    |
+| `text`         | A plain relationship phrase                                          | Read from origin to destination.                      |
+| `reverse_text` | A plain relationship phrase                                          | Read from destination to origin.                      |
 
 Names are nonblank, exact, case-sensitive strings. Do not trim, slugify, infer a
 core kind from their spelling or require a separate `name` field. A registry
@@ -502,26 +504,27 @@ approval or implemented behavior:
   even if map source is unchanged. No valid prior result means an error/empty
   state, not invented content or a silent vocabulary fallback.
 
-## Acceptance requirements for a future implementation
+## Acceptance requirements
 
-These are proposed qualification gates, not completed test results.
+These are the acceptance gates. The [qualification record](verification/custom-connection-types.md)
+distinguishes completed local execution from remaining native/platform limits.
 
-| Area | Required evidence |
-| --- | --- |
-| Progressive authoring | Existing shorthand, placeholders, references, source text and topology are unchanged; inline-only maps need no config. |
-| Declaration structure | Both homes use the same mapping; reject duplicate keys, unknown fields, nulls and malformed values at useful ranges. |
-| Resolution | Exercise all three layers, partial overrides, explicit resets, parent restyling, forward/custom parents and child-owned fields winning over inherited values. |
-| Resolution failures | Reject missing parents, direct/indirect cycles, incomplete phrase pairs in each layer and core-capability changes; graph cycles remain valid. |
-| Value profile | Qualify unitless/absolute/relative/percentage/zero widths, CSS colours and all line presets; reject negative literals, non-finite values, cascade/substitution and arbitrary CSS/SVG input. |
-| Actual painting | Render every marker at both ends, loops, parallel edges and visible continuation ends; inspect transparent gaps/interiors, marker-aware clipping and width/zoom consistency. |
-| Untyped semantics | Restyling `connected` does not assign a default type or change omitted-type presentation. |
-| Link derivation | Exercise custom external/map types inline, at roots and in compatible references; ordinary relations may reach portals without changing their destinations/icons. |
-| Interaction | Endpoint-aware wording is accessible by pointer, keyboard and touch paths; hidden/zero-width paint does not remove routes, steal focus or break drag/pan. |
-| Project loading | Root/config-relative selection works independently of cwd; live buffers win; close/save/path/context changes reload only affected maps; absent config and broken configured files differ. |
-| Failure/recovery | Invalid shared or local edits preserve matching last-valid graph/vocabulary and visibly stale state; correction recovers; superseded async work cannot publish. |
-| Revisions/layout | A vocabulary-only change reaches transport, projections, hover and lists at the same map source revision without resetting view or node positions. |
-| Native consumers | Use the actual standalone/embedded viewer, installed language-server bridge and native Astro/Starlight hosts, not only schema or export mocks. |
-| Packaging | If public packages change, qualify the actual retained pnpm tarballs and installed consumers; this spec itself neither changes versions nor authorizes publication. |
+| Area                  | Required evidence                                                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Progressive authoring | Existing shorthand, placeholders, references, source text and topology are unchanged; inline-only maps need no config.                                                                      |
+| Declaration structure | Both homes use the same mapping; reject duplicate keys, unknown fields, nulls and malformed values at useful ranges.                                                                        |
+| Resolution            | Exercise all three layers, partial overrides, explicit resets, parent restyling, forward/custom parents and child-owned fields winning over inherited values.                               |
+| Resolution failures   | Reject missing parents, direct/indirect cycles, incomplete phrase pairs in each layer and core-capability changes; graph cycles remain valid.                                               |
+| Value profile         | Qualify unitless/absolute/relative/percentage/zero widths, CSS colours and all line presets; reject negative literals, non-finite values, cascade/substitution and arbitrary CSS/SVG input. |
+| Actual painting       | Render every marker at both ends, loops, parallel edges and visible continuation ends; inspect transparent gaps/interiors, marker-aware clipping and width/zoom consistency.                |
+| Untyped semantics     | Restyling `connected` does not assign a default type or change omitted-type presentation.                                                                                                   |
+| Link derivation       | Exercise custom external/map types inline, at roots and in compatible references; ordinary relations may reach portals without changing their destinations/icons.                           |
+| Interaction           | Endpoint-aware wording is accessible by pointer, keyboard and touch paths; hidden/zero-width paint does not remove routes, steal focus or break drag/pan.                                   |
+| Project loading       | Root/config-relative selection works independently of cwd; live buffers win; close/save/path/context changes reload only affected maps; absent config and broken configured files differ.   |
+| Failure/recovery      | Invalid shared or local edits preserve matching last-valid graph/vocabulary and visibly stale state; correction recovers; superseded async work cannot publish.                             |
+| Revisions/layout      | A vocabulary-only change reaches transport, projections, hover and lists at the same map source revision without resetting view or node positions.                                          |
+| Native consumers      | Use the actual standalone/embedded viewer, installed language-server bridge and native Astro/Starlight hosts, not only schema or export mocks.                                              |
+| Packaging             | If public packages change, qualify the actual retained pnpm tarballs and installed consumers; this spec itself neither changes versions nor authorizes publication.                         |
 
 Use focused resolver/analysis tests, generated-schema checks and existing native
 consumer/browser tooling. Do not build a parallel acceptance framework or treat

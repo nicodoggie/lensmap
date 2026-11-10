@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
+import { readProjectVocabulary } from "@lensmap/document/project";
 import {
   canExecute,
   moduleStem,
@@ -57,4 +59,35 @@ test("generated identities distinguish same basenames; identical writes do nothi
   assert.equal(writeGenerated(path, "same"), true);
   assert.equal(writeGenerated(path, "same"), false);
   assert.equal(writeGenerated(path, "changed"), true);
+});
+
+test("map analysis consumes project vocabulary without changing source or authored metadata", async () => {
+  const root = mkdtempSync(join(tmpdir(), "lensmap-astro-vocabulary-"));
+  try {
+    writeFileSync(
+      join(root, "lensmap.config.json"),
+      '{"types":"shared.lenstypes"}',
+    );
+    writeFileSync(
+      join(root, "shared.lenstypes"),
+      "connection_types:\n  reference:\n    extends: external_link\n    line-style: dotted\n    text: cites\n    reverse_text: is cited by\n",
+    );
+    const vocabulary = await readProjectVocabulary(root);
+    const source =
+      "version: v1\nfrontmatter: {title: ' Authored '}\nnodes:\n  - full_text: Parent\n    connections:\n      - type: reference\n        url: https://example.org/guide\n";
+    const uri = pathToFileURL(join(root, "map.lensmap")).href;
+    const result = parseMap(source, uri, vocabulary.input);
+    assert.equal(result.source, source);
+    assert.deepEqual(result.authoredFrontmatter, { title: " Authored " });
+    assert.equal(result.graph.nodes[1].destination?.kind, "external_link");
+    assert.equal(result.graph.edges[0].presentation?.lineStyle, "dotted");
+    writeFileSync(
+      join(root, "lensmap.config.json"),
+      '{"types":"missing.lenstypes"}',
+    );
+    const failed = await readProjectVocabulary(root);
+    assert.throws(() => parseMap(source, uri, failed.input), /Invalid Lensmap/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

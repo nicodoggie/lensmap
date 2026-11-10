@@ -21,7 +21,7 @@ Configure the intended workspace (merge rather than replace existing settings):
 
 ```json
 {
-  "file_types": { "YAML": ["lensmap"] },
+  "file_types": { "YAML": ["lensmap", "lenstypes"] },
   "languages": { "YAML": { "language_servers": ["lensmap", "..."] } }
 }
 ```

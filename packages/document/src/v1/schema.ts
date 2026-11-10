@@ -1,3 +1,11 @@
+import { ConnectionTypeDeclarationsSchema } from "../vocabulary.js";
+
+export type { ConnectionTypeDeclarations } from "../vocabulary.js";
+export {
+  ConnectionTypeDeclarationSchema,
+  ConnectionTypeDeclarationsSchema,
+} from "../vocabulary.js";
+
 import { z } from "zod";
 
 /** Experimental v1 subset. Fields may be added or refined before v1 stabilizes. */
@@ -15,17 +23,11 @@ export const ConnectionTypeSchema = z.enum([
   "external_link",
   "map_link",
 ]);
-export type ConnectionType = z.infer<typeof ConnectionTypeSchema>;
-const LocalTypeSchema = z.enum([
-  "connected",
-  "precedes",
-  "follows",
-  "prevents",
-  "optional",
-]);
+export type ConnectionType = string;
+const AuthoredTypeSchema = z.string().regex(/\S/);
 export const ReferenceSchema = z.strictObject({
   node_id: IdSchema,
-  type: ConnectionTypeSchema.optional(),
+  type: AuthoredTypeSchema.optional(),
 });
 
 const NodeContentSchema = z.strictObject({
@@ -45,7 +47,12 @@ export type Connection = string | RichNode | Reference | Connection[];
 
 const ordinary = (typed: boolean) => {
   const base = typed
-    ? NodeContentSchema.extend({ type: LocalTypeSchema.optional() })
+    ? NodeContentSchema.extend({
+        type: z
+          .string()
+          .regex(/^(?!(?:map_link|external_link)$).*\S/s)
+          .optional(),
+      })
     : NodeContentSchema;
   return z.union([
     base.extend({
@@ -60,7 +67,7 @@ const ordinary = (typed: boolean) => {
 };
 const portal = () =>
   NodeContentSchema.extend({
-    type: z.enum(["map_link", "external_link"]),
+    type: AuthoredTypeSchema,
     url: z.string().regex(/\S/, "A portal URL must not be blank."),
     connections: z.array(ConnectionSchema).optional(),
   });
@@ -83,6 +90,7 @@ export const NodeSchema = z.union([z.string(), RootNodeSchema]);
 export const DocumentSchema = z.strictObject({
   version: z.literal("v1"),
   frontmatter: z.record(z.string(), z.unknown()).optional(),
+  connection_types: ConnectionTypeDeclarationsSchema.optional(),
   nodes: z.array(NodeSchema),
 });
 export type LensmapDocument = z.infer<typeof DocumentSchema>;

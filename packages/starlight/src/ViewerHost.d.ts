@@ -11,12 +11,16 @@ export type GraphNode = Pick<
 };
 export interface GraphData {
   nodes: GraphNode[];
-  edges: Pick<Connection, "key" | "from" | "to" | "kind" | "type">[];
+  edges: Pick<
+    Connection,
+    "key" | "from" | "to" | "kind" | "type" | "presentation"
+  >[];
 }
 export interface ViewerHostProps {
   graph: GraphData;
   rendered: Record<string, string>;
   inspectorId?: string;
+  mapId?: string;
   getLabel?: (node: GraphNode) => string;
 }
 export default function ViewerHost(props: ViewerHostProps): ReactElement;

@@ -118,7 +118,8 @@ export default function Sidebar({
                 onClick={() => onFocus(edge.to)}
               >
                 <span>
-                  {connectionWording(edge.type, "outgoing")} · {label(target)}
+                  {connectionWording(edge.type, "outgoing", edge.presentation)}{" "}
+                  · {label(target)}
                 </span>
                 <span aria-hidden="true">↗</span>
               </button>
@@ -140,7 +141,8 @@ export default function Sidebar({
                   key={edge.key}
                   onClick={() => onFocus(origin.key)}
                 >
-                  {connectionWording(edge.type, "incoming")} · {label(origin)}
+                  {connectionWording(edge.type, "incoming", edge.presentation)}{" "}
+                  · {label(origin)}
                 </button>
               )
             );

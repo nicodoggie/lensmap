@@ -1,0 +1,12 @@
+connection_types:
+  requires:
+    extends: precedes
+    stroke-width: 3px
+    text: requires
+    reverse_text: is required by
+  reference:
+    extends: external_link
+    line-style: dotted
+    end-marker: circle
+    text: cites
+    reverse_text: is cited by

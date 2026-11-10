@@ -27,7 +27,7 @@ if (values.help) {
   process.stdout.write(
     `${JSON.stringify(
       {
-        file_types: { YAML: ["lensmap"] },
+        file_types: { YAML: ["lensmap", "lenstypes"] },
         languages: { YAML: { language_servers: ["lensmap", "..."] } },
         lsp: {
           lensmap: {

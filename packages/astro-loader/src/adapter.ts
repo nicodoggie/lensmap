@@ -4,6 +4,7 @@ import {
   DocumentSchema,
   DocumentSession,
   type SemanticGraph,
+  type VocabularyInput,
 } from "@lensmap/document";
 import { parseDocument } from "yaml";
 
@@ -39,8 +40,17 @@ export interface ParsedMap {
   authoredFrontmatter: Record<string, unknown>;
   graph: SemanticGraph;
 }
-export function parseMap(source: string, uri: string): ParsedMap {
-  const snapshot = new DocumentSession(uri, source).snapshot();
+export function parseMap(
+  source: string,
+  uri: string,
+  vocabulary?: VocabularyInput,
+): ParsedMap {
+  const snapshot = new DocumentSession(
+    uri,
+    source,
+    undefined,
+    vocabulary,
+  ).snapshot();
   if (!snapshot.valid || !snapshot.graph)
     throw new Error(
       `Invalid Lensmap ${uri}: ${JSON.stringify(snapshot.diagnostics)}`,

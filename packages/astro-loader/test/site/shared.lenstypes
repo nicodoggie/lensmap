@@ -1,0 +1,5 @@
+connection_types:
+  host_relation:
+    line-color: "#a855f7"
+    line-style: dashed
+    end-marker: none

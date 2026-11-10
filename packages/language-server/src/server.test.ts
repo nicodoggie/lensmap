@@ -3,8 +3,11 @@ import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
+import { pathToFileURL } from "node:url";
+import { offsetToPosition, positionToOffset } from "@lensmap/document";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  type CompletionItem,
   createMessageConnection,
   StreamMessageReader,
   StreamMessageWriter,
@@ -19,7 +22,7 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
-async function fixture(showDocument = false) {
+async function fixture(showDocument = false, projectRoot?: string) {
   const assets = await mkdtemp(join(tmpdir(), "lensmap-server-"));
   cleanups.push(() => rm(assets, { recursive: true, force: true }));
   await writeFile(
@@ -57,6 +60,9 @@ async function fixture(showDocument = false) {
   });
   const initialized = await client.sendRequest("initialize", {
     processId: null,
+    workspaceFolders: projectRoot
+      ? [{ uri: pathToFileURL(projectRoot).href, name: "Synthetic project" }]
+      : null,
     capabilities: {
       workspace: { applyEdit: true },
       window: { showDocument: { support: showDocument } },
@@ -113,6 +119,193 @@ async function fixture(showDocument = false) {
 }
 
 describe("stdio LSP and secured live bridge", () => {
+  it("applies YAML-safe type and parent completions without consuming quotes or comments", async () => {
+    const f = await fixture();
+    await f.open();
+    let revision = 2;
+    for (const { name, field, current } of [
+      { name: "true", field: "type", current: "" },
+      { name: "a: b", field: "extends", current: '"connected"' },
+      { name: "#relationship", field: "type", current: "con" },
+    ]) {
+      const draft = `version: v1\nconnection_types:\n  ${JSON.stringify(name)}: {line-color: red}\n  child:\n    extends: ${field === "extends" ? current : "connected"} # preserve parent comment\nnodes:\n  - summary: Parent\n    connections:\n      - type: ${field === "type" ? current : "child"} # preserve type comment\n        summary: Child\n`;
+      await f.change(draft, revision++);
+      const prefix = `${field}: `;
+      const at = offsetToPosition(
+        draft,
+        draft.indexOf(prefix) + prefix.length + Math.min(current.length, 3),
+      );
+      const items = await f.client.sendRequest<CompletionItem[]>(
+        "textDocument/completion",
+        { textDocument: { uri }, position: at },
+      );
+      const edit = items.find((item) => item.label === name)?.textEdit;
+      expect(edit).toBeDefined();
+      if (!edit || !("range" in edit))
+        throw Error("Completion requires a scalar replacement range");
+      const applied =
+        draft.slice(0, positionToOffset(draft, edit.range.start)) +
+        edit.newText +
+        draft.slice(positionToOffset(draft, edit.range.end));
+      expect(applied).toContain("# preserve parent comment");
+      expect(applied).toContain("# preserve type comment");
+      const snapshot = await f.change(applied, revision++);
+      expect(
+        snapshot.valid,
+        JSON.stringify({
+          name,
+          field,
+          applied,
+          diagnostics: snapshot.diagnostics,
+        }),
+      ).toBe(true);
+      if (field === "type") expect(snapshot.graph.edges[0].type).toBe(name);
+      else expect(snapshot.vocabulary.child.lineColor).toBe("red");
+    }
+  });
+  it("reloads project vocabulary at the same map revision, prefers live buffers and retains stale presentation", async () => {
+    const root = await mkdtemp(join(tmpdir(), "lensmap-vocabulary-host-"));
+    cleanups.push(() => rm(root, { recursive: true, force: true }));
+    const vocabularyPath = join(root, "project.lenstypes");
+    const vocabularyUri = pathToFileURL(vocabularyPath).href;
+    const mapUri = pathToFileURL(join(root, "map.lensmap")).href;
+    const vocabulary = (width: string) =>
+      `connection_types:\n  requires:\n    extends: local_base\n    text: requires\n    reverse_text: is required by\n    stroke-width: ${width}\n`;
+    const mapSource =
+      "version: v1\nconnection_types:\n  local_base: {}\nnodes:\n  - full_text: Parent\n    connections:\n      - type: requires\n        full_text: Child\n";
+    const typePosition = offsetToPosition(
+      mapSource,
+      mapSource.indexOf("requires") + 2,
+    );
+    await writeFile(
+      join(root, "lensmap.config.json"),
+      '{"types":"project.lenstypes"}',
+    );
+    await writeFile(vocabularyPath, vocabulary("4px"));
+    const f = await fixture(false, root);
+    const read = async () =>
+      (await f.get(`/api/document?uri=${encodeURIComponent(mapUri)}`)).data;
+    const diagnostics: { uri: string; diagnostics: unknown[] }[] = [];
+    f.client.onNotification("textDocument/publishDiagnostics", (value) => {
+      diagnostics.push(value);
+    });
+    await f.client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: mapUri,
+        languageId: "yaml",
+        version: 1,
+        text: mapSource,
+      },
+    });
+    await expect.poll(async () => (await read()).pending).toBe(false);
+    const first = await read();
+    expect(first.valid).toBe(true);
+    expect(first.graph.edges[0].presentation.strokeWidth).toBe("4px");
+    const completions = await f.client.sendRequest("textDocument/completion", {
+      textDocument: { uri: mapUri },
+      position: typePosition,
+    });
+    expect(completions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "requires" })]),
+    );
+    const hover = await f.client.sendRequest("textDocument/hover", {
+      textDocument: { uri: mapUri },
+      position: typePosition,
+    });
+    expect(JSON.stringify(hover)).toContain("is required by");
+    const definition = await f.client.sendRequest("textDocument/definition", {
+      textDocument: { uri: mapUri },
+      position: typePosition,
+    });
+    expect(definition).toEqual(expect.objectContaining({ uri: vocabularyUri }));
+    await f.client.sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: vocabularyUri,
+        languageId: "yaml",
+        version: 1,
+        text: vocabulary("6px"),
+      },
+    });
+    await expect
+      .poll(async () => (await read()).graph.edges[0].presentation.strokeWidth)
+      .toBe("6px");
+    const live = await read();
+    expect(live.revision).toBe(1);
+    expect(live.graphGeneration).toBeGreaterThan(first.graphGeneration);
+    expect(live.graph.nodes.map((node: { key: string }) => node.key)).toEqual(
+      first.graph.nodes.map((node: { key: string }) => node.key),
+    );
+    expect((await f.get("/api/session")).data.documents).toHaveLength(1);
+    const inherited = await f.client.sendRequest("textDocument/hover", {
+      textDocument: { uri: vocabularyUri },
+      position: { line: 2, character: 16 },
+    });
+    expect(JSON.stringify(inherited)).toContain(mapUri);
+    expect(
+      await f.client.sendRequest("textDocument/definition", {
+        textDocument: { uri: vocabularyUri },
+        position: { line: 2, character: 16 },
+      }),
+    ).toEqual(expect.objectContaining({ uri: mapUri }));
+    expect(
+      diagnostics.filter((item) => item.uri === vocabularyUri).at(-1)
+        ?.diagnostics ?? [],
+    ).toEqual([]);
+
+    await f.client.sendNotification("textDocument/didChange", {
+      textDocument: { uri: vocabularyUri, version: 2 },
+      contentChanges: [
+        {
+          text: "connection_types:\n  requires:\n    extends: missing_parent\n",
+        },
+      ],
+    });
+    await expect.poll(async () => (await read()).valid).toBe(false);
+    expect((await read()).graph).toEqual(live.graph);
+    expect((await read()).diagnostics[0].message).toMatch(/missing_parent/);
+    expect((await read()).diagnostics[0].uri).toBe(vocabularyUri);
+    const parents = await f.client.sendRequest("textDocument/completion", {
+      textDocument: { uri: vocabularyUri },
+      position: { line: 2, character: 24 },
+    });
+    expect(parents).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: "connected" })]),
+    );
+    await expect
+      .poll(() =>
+        diagnostics.some(
+          (item) => item.uri === vocabularyUri && item.diagnostics.length > 0,
+        ),
+      )
+      .toBe(true);
+    await writeFile(vocabularyPath, vocabulary("8px"));
+    await f.client.sendNotification("textDocument/didClose", {
+      textDocument: { uri: vocabularyUri },
+    });
+    await expect.poll(async () => (await read()).valid).toBe(true);
+    expect((await read()).graph.edges[0].presentation.strokeWidth).toBe("8px");
+    await writeFile(vocabularyPath, vocabulary("9px"));
+    await expect
+      .poll(async () => (await read()).graph.edges[0].presentation.strokeWidth)
+      .toBe("9px");
+    expect((await read()).revision).toBe(1);
+    const configPath = join(root, "lensmap.config.json");
+    const configUri = pathToFileURL(configPath).href;
+    await writeFile(configPath, '{"types":"missing.lenstypes"}');
+    await expect.poll(async () => (await read()).valid).toBe(false);
+    expect((await read()).diagnostics[0].uri).toBe(configUri);
+    expect((await read()).graph.edges[0].presentation.strokeWidth).toBe("9px");
+    await expect
+      .poll(
+        () =>
+          diagnostics.filter((item) => item.uri === configUri).at(-1)
+            ?.diagnostics.length ?? 0,
+      )
+      .toBeGreaterThan(0);
+    await writeFile(configPath, '{"types":"project.lenstypes"}');
+    await expect.poll(async () => (await read()).valid).toBe(true);
+  });
+
   it("completes supported relationship names even while a type is being written", async () => {
     const f = await fixture();
     await f.open();

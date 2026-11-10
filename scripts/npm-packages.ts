@@ -70,6 +70,8 @@ if (values.test) {
         name: "lensmap-package-consumer",
         private: true,
         type: "module",
+        // These apps share this native npm install, including dev-server modules.
+        workspaces: ["astro-site", "starlight-site"],
       }),
     );
     run(
@@ -91,6 +93,7 @@ if (values.test) {
 import { readFileSync } from 'node:fs';
 import { DocumentSession, DocumentSchema } from '@lensmap/document';
 import { DocumentSchema as v1 } from '@lensmap/document/v1';
+import { readProjectVocabulary } from '@lensmap/document/project';
 import { startServer } from '@lensmap/language-server';
 import lensmap from '@lensmap/astro-loader';
 import starlightLensmap from '@lensmap/starlight';
@@ -110,7 +113,7 @@ for (const [name, expectedDependencies] of Object.entries(dependencies)) {
 }
 assert.equal(DocumentSchema, v1);
 assert.equal(typeof startServer, 'function');
-const snapshot = new DocumentSession('file:///consumer.lensmap', 'version: v1\\nnodes: [Installed]\\n', 1).snapshot();
+const snapshot = new DocumentSession('file:///consumer.lensmap', 'version: v1\\nnodes: [Installed]\\n', 1, (await readProjectVocabulary('.')).input).snapshot();
 assert.ok(snapshot.graph);
 assert.equal(snapshot.graph.nodes[0].title, 'Installed');
 `,

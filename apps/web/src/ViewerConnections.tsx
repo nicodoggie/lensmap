@@ -41,7 +41,8 @@ export default function ViewerConnections({
                     data-focus-key={key}
                     onClick={() => onFocus(key)}
                   >
-                    {connectionWording(edge.type, direction)} · {getLabel(node)}
+                    {connectionWording(edge.type, direction, edge.presentation)}{" "}
+                    · {getLabel(node)}
                   </button>
                 )
               );

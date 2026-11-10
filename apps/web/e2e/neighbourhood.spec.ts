@@ -35,6 +35,14 @@ test("radial neighbourhood preserves the map, boundary edge styles and uniform z
             kind: e.getAttribute("data-kind"),
             colour: getComputedStyle(e).stroke,
             dash: getComputedStyle(e).strokeDasharray,
+            startShape:
+              document.getElementById(
+                e.getAttribute("marker-start")?.slice(5, -1) ?? "",
+              )?.innerHTML ?? null,
+            endShape:
+              document.getElementById(
+                e.getAttribute("marker-end")?.slice(5, -1) ?? "",
+              )?.innerHTML ?? null,
           },
         ]),
       ),
@@ -61,17 +69,34 @@ test("radial neighbourhood preserves the map, boundary edge styles and uniform z
     .locator("[data-continuation]")
     .evaluateAll((elements) =>
       elements.map((e) => {
-        const id = e.getAttribute("stroke")?.match(/^url\(#(.+)\)$/)?.[1];
-        const gradient = id ? document.getElementById(id) : null;
-        const first = gradient?.querySelector("stop");
+        const maskId = e
+          .closest("[data-presentation-width]")
+          ?.getAttribute("mask")
+          ?.slice(5, -1);
+        const fill = maskId
+          ? document
+              .getElementById(maskId)
+              ?.querySelector("rect")
+              ?.getAttribute("fill")
+          : null;
+        const gradient = fill
+          ? document.getElementById(fill.slice(5, -1))
+          : null;
         return {
           key: e.getAttribute("data-continuation") ?? "",
           kind: e.getAttribute("data-kind"),
           dash: getComputedStyle(e).strokeDasharray,
-          colour: first ? getComputedStyle(first).stopColor : null,
+          colour: getComputedStyle(e).stroke,
           fade: gradient?.lastElementChild?.getAttribute("stop-opacity"),
           direction: e.getAttribute("data-direction"),
-          marker: e.getAttribute("marker-end"),
+          startShape:
+            document.getElementById(
+              e.getAttribute("marker-start")?.slice(5, -1) ?? "",
+            )?.innerHTML ?? null,
+          endShape:
+            document.getElementById(
+              e.getAttribute("marker-end")?.slice(5, -1) ?? "",
+            )?.innerHTML ?? null,
         };
       }),
     );
@@ -80,9 +105,16 @@ test("radial neighbourhood preserves the map, boundary edge styles and uniform z
     expect(continuation.dash).toBe(originalEdges[continuation.key].dash);
     expect(continuation.colour).toBe(originalEdges[continuation.key].colour);
     expect(continuation.fade).toBe("0");
-    if (continuation.direction === "incoming" && continuation.kind === "cross")
-      expect(continuation.marker).toContain("arrow-");
-    else expect(continuation.marker).toBeNull();
+    expect(continuation.startShape).toBe(
+      continuation.direction === "outgoing"
+        ? originalEdges[continuation.key].startShape
+        : null,
+    );
+    expect(continuation.endShape).toBe(
+      continuation.direction === "incoming"
+        ? originalEdges[continuation.key].endShape
+        : null,
+    );
   }
   await page.screenshot({
     path: testInfo.outputPath("neighbourhood-desktop.png"),

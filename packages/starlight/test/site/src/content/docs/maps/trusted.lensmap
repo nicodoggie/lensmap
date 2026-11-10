@@ -2,6 +2,9 @@ version: v1
 frontmatter:
   title: Synthetic map
   description: SERVER_DESCRIPTION_SENTINEL
+connection_types:
+  host_relation:
+    stroke-width: 3
 nodes:
   - id: start
     summary: Start
@@ -12,7 +15,8 @@ nodes:
 
       Entry: {props.entry.data.title}
     connections:
-      - id: short
+      - type: host_relation
+        id: short
         summary: Short thought
         full_text: |
           # Short thought

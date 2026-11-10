@@ -10,6 +10,7 @@ interface Props {
   authoredFrontmatter: Record<string, unknown>;
   executable: boolean;
   inspectorId?: string;
+  mapId?: string;
 }
 const { graph: semantic, executable, inspectorId = "default" } = Astro.props;
 const entry = Astro.props.entry ?? Astro.locals.starlightRoute?.entry;
@@ -29,7 +30,7 @@ const publicGraph = {
 };
 ---
 <div data-lensmap-document data-executable={String(executable)}>
-  <div class="not-content"><ViewerHost client:load graph={publicGraph} rendered={rendered} inspectorId={inspectorId} /></div>
+  <div class="not-content"><ViewerHost client:load mapId={Astro.props.mapId} graph={publicGraph} rendered={rendered} inspectorId={inspectorId} /></div>
   <section data-static-thoughts>
     {graph.nodes.map((node) => <section data-thought={node.key}><h2>{node.title}</h2><div set:html={rendered[node.key]} /></section>)}
   </section>

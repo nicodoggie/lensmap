@@ -43,8 +43,9 @@ Re-run this command after moving the checkout or changing its Node installation.
    now `lensmap-lsp`; uninstall an earlier `lensmap` dev extension before
    reinstalling to avoid duplicate launchers. Keep the `lsp.lensmap` settings key.
 2. Merge the printed settings into the intended workspace's `.zed/settings.json`.
-   Preserve unrelated settings and existing language servers. `.lensmap` files
-   are associated with YAML; the Lensmap server ignores ordinary YAML documents.
+   Preserve unrelated settings and existing language servers. `.lensmap` and
+   `.lenstypes` files are associated with YAML; the Lensmap server ignores
+   ordinary YAML documents.
 3. Open `examples/quickstart.lensmap` or the larger `examples/night-ferry.lensmap`.
    Use Zed's language-server restart action if it was open before configuration.
 4. At a source thought, open code actions and choose **Lensmap: Open preview**.
@@ -94,6 +95,26 @@ repository's tests.
 - Closing/restarting the language server closes its HTTP endpoint. The browser
   marks itself disconnected and retains the last map; reopen from Zed after a
   restart to authorize the new session. There is no permanent daemon.
+
+## Project connection vocabulary (source checkout)
+
+Use a workspace-root `lensmap.config.json` containing
+`{"types":"relationships.lenstypes"}` to select one shared vocabulary.
+Relative paths are based on that configuration file, not the server's working
+directory. Nested configurations are not discovered by walking ancestors.
+See the [shared example](../examples/custom-connection-types/README.md).
+
+Known config/vocabulary files are watched for saved changes. Vocabulary-only
+updates do not require a fake map edit; invalid vocabulary retains the previous
+graph and reports the responsible file. Attached `.lenstypes` buffers take
+precedence over disk. `type`/`extends` completion, hover and declaration navigation
+use the effective vocabulary, including map-local overrides.
+
+An unsaved configuration buffer takes precedence **only if the editor forwards
+it to Lensmap**. The generated YAML association does not attach unrelated JSON
+files or guarantee that Zed forwards its JSON configuration buffer. Saved config
+reloads and explicitly forwarded config buffers are separate host capabilities.
+Use the local runtime override for unreleased source-checkout features.
 
 ## Focused tool API
 

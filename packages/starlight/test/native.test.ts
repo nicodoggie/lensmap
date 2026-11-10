@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import {
+  copyFileSync,
+  existsSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, extname, resolve } from "node:path";
@@ -12,6 +19,13 @@ import { unmarkedTargetGaps } from "../../../apps/web/e2e/edge-geometry.ts";
 const site = process.env.LENSMAP_PACKAGE_CONSUMER
   ? resolve(process.env.LENSMAP_PACKAGE_CONSUMER, "starlight-site")
   : fileURLToPath(new URL("site/", import.meta.url));
+// The installed-consumer harness copies src/config; retain these root-owned data fixtures too.
+if (process.env.LENSMAP_PACKAGE_CONSUMER) {
+  for (const name of ["lensmap.config.json", "shared.lenstypes"]) {
+    copyFileSync(new URL(`site/${name}`, import.meta.url), resolve(site, name));
+  }
+}
+
 const dist = resolve(site, "dist");
 const cli = resolve(
   dirname(
@@ -254,5 +268,137 @@ test("native Starlight static reading and one-session responsive inspector", asy
     await new Promise<void>((done, fail) =>
       server.close((error) => (error ? fail(error) : done())),
     );
+  }
+});
+
+test("native dev vocabulary changes preserve the viewer and recover from invalid/deleted config", async () => {
+  const configPath = resolve(site, "lensmap.config.json");
+  const typesPath = resolve(site, "shared.lenstypes");
+  const originalConfig = readFileSync(configPath, "utf8");
+  const originalTypes = readFileSync(typesPath, "utf8");
+  const child = spawn(
+    process.execPath,
+    [cli, "dev", "--ignore-lock", "--host", "127.0.0.1", "--port", "4389"],
+    { cwd: site, env: process.env },
+  );
+  let output = "";
+  child.stdout.on("data", (chunk) => {
+    output += chunk;
+  });
+  child.stderr.on("data", (chunk) => {
+    output += chunk;
+  });
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+  try {
+    await new Promise<void>((done, fail) => {
+      const timeout = setTimeout(() => fail(new Error(output)), 30000);
+      child.stdout.on("data", () => {
+        if (output.includes("http://127.0.0.1:4389")) {
+          clearTimeout(timeout);
+          done();
+        }
+      });
+      child.once("exit", () => {
+        clearTimeout(timeout);
+        fail(new Error(output));
+      });
+    });
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 1000 },
+    });
+    await page.goto("http://127.0.0.1:4389/maps/trusted/");
+    const state = page.locator("[data-lensmap-stale]");
+    await expect(state).toHaveAttribute("data-lensmap-stale", "false");
+    await page
+      .locator("[data-live-inspector]:visible")
+      .getByRole("button", {
+        name: "connected to · Short thought",
+        exact: true,
+      })
+      .click();
+    const selected = await page
+      .locator("[data-live-inspector]:visible")
+      .getAttribute("data-selected-key");
+    await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+    const camera = await page.locator(".graph-scene").getAttribute("style");
+    const origin = await page.evaluate(() => performance.timeOrigin);
+    const centres = await page
+      .locator(".node")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => (node as HTMLElement).style.cssText),
+      );
+    await new Promise((done) => setTimeout(done, 150));
+    writeFileSync(typesPath, originalTypes.replace("#a855f7", "#22c55e"));
+    await expect(page.locator('path[stroke="#22c55e"]').first()).toBeAttached();
+    assert.equal(await page.evaluate(() => performance.timeOrigin), origin);
+    assert.equal(
+      await page
+        .locator("[data-live-inspector]:visible")
+        .getAttribute("data-selected-key"),
+      selected,
+    );
+    assert.deepEqual(
+      await page
+        .locator(".node")
+        .evaluateAll((nodes) =>
+          nodes.map((node) => (node as HTMLElement).style.cssText),
+        ),
+      centres,
+    );
+    await new Promise((done) => setTimeout(done, 150));
+    writeFileSync(
+      typesPath,
+      "connection_types: {host_relation: {line-color: invalid-color}}\n",
+    );
+    await expect(state).toHaveAttribute("data-lensmap-stale", "true");
+    await page.screenshot({
+      path: resolve(dist, "dev-stale.png"),
+      fullPage: true,
+    });
+    await expect(page.locator('path[stroke="#22c55e"]').first()).toBeAttached();
+    await new Promise((done) => setTimeout(done, 150));
+    writeFileSync(typesPath, originalTypes);
+    await expect(state).toHaveAttribute("data-lensmap-stale", "false");
+    await new Promise((done) => setTimeout(done, 150));
+    unlinkSync(configPath);
+    await expect(page.locator('path[stroke="#a855f7"]')).toHaveCount(0);
+    await expect(state).toHaveAttribute("data-lensmap-stale", "false");
+    await new Promise((done) => setTimeout(done, 150));
+    writeFileSync(configPath, originalConfig);
+    await expect(page.locator('path[stroke="#a855f7"]').first()).toBeAttached();
+    await new Promise((done) => setTimeout(done, 150));
+    unlinkSync(typesPath);
+    await expect(state).toHaveAttribute("data-lensmap-stale", "true");
+    writeFileSync(typesPath, originalTypes);
+    await expect(state).toHaveAttribute("data-lensmap-stale", "false");
+    await new Promise((done) => setTimeout(done, 150));
+    writeFileSync(
+      resolve(site, "alternate.lenstypes"),
+      originalTypes.replace("#a855f7", "#ef4444"),
+    );
+    writeFileSync(configPath, '{"types":"alternate.lenstypes"}');
+    await expect(page.locator('path[stroke="#ef4444"]').first()).toBeAttached();
+    await new Promise((done) => setTimeout(done, 150));
+    writeFileSync(configPath, originalConfig);
+    await expect(page.locator('path[stroke="#a855f7"]').first()).toBeAttached();
+    assert.equal(await page.evaluate(() => performance.timeOrigin), origin);
+    assert.equal(
+      await page.locator(".graph-scene").getAttribute("style"),
+      camera,
+    );
+    await page.screenshot({
+      path: resolve(dist, "dev-vocabulary.png"),
+      fullPage: true,
+    });
+  } finally {
+    await new Promise((done) => setTimeout(done, 150));
+    writeFileSync(configPath, originalConfig);
+    await new Promise((done) => setTimeout(done, 150));
+    writeFileSync(typesPath, originalTypes);
+    await browser?.close();
+    child.kill();
+    if (existsSync(resolve(site, "alternate.lenstypes")))
+      unlinkSync(resolve(site, "alternate.lenstypes"));
   }
 });

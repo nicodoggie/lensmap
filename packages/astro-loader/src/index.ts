@@ -1,6 +1,8 @@
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { VocabularyInput } from "@lensmap/document";
+import { readProjectVocabulary } from "@lensmap/document/project";
 import type { AstroConfig, AstroIntegration } from "astro";
 import { glob } from "astro/loaders";
 import {
@@ -59,10 +61,83 @@ export default function lensmap(
   let config: ConfigWithProcessor;
   let renderer: MarkdownRenderer | undefined;
   let installedMdx = false;
+  let vocabulary: VocabularyInput = {};
+  let vocabularyFiles: string[] = [];
+  let generation = 0;
+  const maps = new Map<string, { source: string; id: string }>();
+  async function reloadVocabulary() {
+    const current = ++generation;
+    const root = realpathSync(fileURLToPath(config.root));
+    const loaded = await readProjectVocabulary(root);
+    if (current !== generation) return false;
+    vocabulary = loaded.input;
+    // The owning loader authorizes vocabulary targets and always retains the
+    // known config filename so an invalid symlink/config can be repaired live.
+    vocabularyFiles = loaded.files;
+    return true;
+  }
+  type DevServer = Parameters<
+    NonNullable<AstroIntegration["hooks"]["astro:server:setup"]>
+  >[0]["server"];
+  async function publishVocabulary(server: DevServer) {
+    if (!(await reloadVocabulary())) return [];
+    server.watcher.add(vocabularyFiles);
+    for (const [uri, map] of maps) {
+      try {
+        const { graph } = parseMap(map.source, uri, vocabulary);
+        server.ws.send("lensmap:vocabulary", {
+          id: map.id,
+          stale: false,
+          edges: graph.edges.map(
+            ({ key, from, to, kind, type, presentation }) => ({
+              key,
+              from,
+              to,
+              kind,
+              type,
+              presentation,
+            }),
+          ),
+          nodes: graph.nodes.map(({ key, destination }) => ({
+            key,
+            destination,
+          })),
+        });
+      } catch (error) {
+        server.config.logger.error(
+          error instanceof Error ? error.message : String(error),
+        );
+        server.ws.send("lensmap:vocabulary", { id: map.id, stale: true });
+      }
+    }
+
+    // Invalidate cached server analysis for subsequent navigation without reloading the mounted island.
+    for (const uri of maps.keys()) {
+      for (const environment of Object.values(server.environments)) {
+        for (const module of environment.moduleGraph.getModulesByFile(
+          fileURLToPath(uri),
+        ) ?? []) {
+          environment.moduleGraph.invalidateModule(module);
+        }
+      }
+    }
+  }
   const mdxModules = new Map<string, { code: string; source: string }>();
   return {
     name: "@lensmap/astro-loader",
     hooks: {
+      "astro:server:setup": ({ server }) => {
+        server.watcher.add(vocabularyFiles);
+        const changed = (path: string) => {
+          if (vocabularyFiles.includes(path)) void publishVocabulary(server);
+        };
+        server.watcher.on("add", changed);
+        server.watcher.on("unlink", changed);
+        server.httpServer?.once("close", () => {
+          server.watcher.off("add", changed);
+          server.watcher.off("unlink", changed);
+        });
+      },
       "astro:config:setup": (setup) => {
         const version = JSON.parse(
           readFileSync(
@@ -89,8 +164,23 @@ export default function lensmap(
               {
                 name: "lensmap-source-relative-mdx",
                 enforce: "pre",
-                resolveId(id) {
+                resolveId(id, _importer, resolveOptions) {
+                  // Keep Node's package data resolution intact during prerendering.
+                  if (resolveOptions.ssr && id === "@lensmap/document")
+                    return {
+                      id: fileURLToPath(
+                        new URL(import.meta.resolve("@lensmap/document")),
+                      ),
+                      external: true,
+                    };
+
                   if (mdxModules.has(id)) return id;
+                },
+                async hotUpdate(context) {
+                  if (!vocabularyFiles.includes(context.file)) return;
+                  if (this.environment.name !== "client") return [];
+                  await publishVocabulary(context.server);
+                  return [];
                 },
                 load(id) {
                   const module = mdxModules.get(id.split("?")[0] ?? id);
@@ -111,6 +201,7 @@ export default function lensmap(
             const { authoredFrontmatter: data, graph } = parseMap(
               contents,
               fileUrl.href,
+              vocabulary,
             );
             return {
               data,
@@ -121,9 +212,12 @@ export default function lensmap(
           },
           async getRenderModule({ contents, fileUrl }) {
             const path = fileURLToPath(fileUrl);
+            const mapId = moduleStem(path);
+            maps.set(fileUrl.href, { source: contents, id: mapId });
             const { graph, authoredFrontmatter } = parseMap(
               contents,
               fileUrl.href,
+              vocabulary,
             );
             const executable = canExecute(
               { kind: "local", path },
@@ -179,7 +273,7 @@ export default function lensmap(
             const wrapper = resolve(generated, `${moduleStem(path)}.astro`);
             writeGenerated(
               wrapper,
-              `---\nimport MapContent from ${quote(component)};\n${imports.join("\n")}\nconst graph = ${quote(graph)};\nconst authoredFrontmatter = ${quote(authoredFrontmatter)};\n---\n<MapContent {...Astro.props} graph={graph} authoredFrontmatter={authoredFrontmatter} executable={${executable}}>\n${slots.join("\n")}\n</MapContent>\n`,
+              `---\nimport MapContent from ${quote(component)};\n${imports.join("\n")}\nconst graph = ${quote(graph)};\nconst authoredFrontmatter = ${quote(authoredFrontmatter)};\n---\n<MapContent {...Astro.props} graph={graph} mapId={${quote(mapId)}} authoredFrontmatter={authoredFrontmatter} executable={${executable}}>\n${slots.join("\n")}\n</MapContent>\n`,
             );
             return {
               code: `export { default as Content } from ${quote(wrapper)}; export const getHeadings = () => [];`,
@@ -188,8 +282,13 @@ export default function lensmap(
           },
         });
       },
-      "astro:config:done": ({ config: resolved }) => {
+      "astro:config:done": async ({ config: resolved }) => {
         config = resolved as ConfigWithProcessor;
+        await reloadVocabulary();
+        if (vocabulary.error)
+          throw new Error(
+            `Invalid Lensmap project vocabulary: ${vocabulary.error}`,
+          );
         installedMdx = resolved.integrations.some(
           (integration) => integration.name === "@astrojs/mdx",
         );

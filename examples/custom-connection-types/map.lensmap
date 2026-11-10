@@ -1,0 +1,13 @@
+version: v1
+connection_types:
+  requires:
+    line-color: "#d9a441"
+nodes:
+  - full_text: Assemble the reading list
+    connections:
+      - type: requires
+        full_text: Find the original account
+        connections:
+          - type: reference
+            url: https://example.org/source
+            summary: A source document

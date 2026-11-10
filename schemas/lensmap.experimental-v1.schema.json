@@ -13,6 +13,75 @@
       },
       "additionalProperties": {}
     },
+    "connection_types": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "\\S"
+      },
+      "additionalProperties": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "extends": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "stroke-width": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "line-style": {
+            "type": "string",
+            "enum": ["solid", "dashed", "dotted"]
+          },
+          "line-color": {
+            "type": "string"
+          },
+          "start-marker": {
+            "type": "string",
+            "enum": ["none", "arrow", "bar", "circle", "diamond"]
+          },
+          "end-marker": {
+            "type": "string",
+            "enum": ["none", "arrow", "bar", "circle", "diamond"]
+          },
+          "text": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "reverse_text": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": ["text", "reverse_text"]
+          },
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "required": ["text"]
+                },
+                {
+                  "required": ["reverse_text"]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
     "nodes": {
       "type": "array",
       "items": {
@@ -126,7 +195,7 @@
                   },
                   "type": {
                     "type": "string",
-                    "enum": ["map_link", "external_link"]
+                    "pattern": "\\S"
                   },
                   "url": {
                     "type": "string",
@@ -165,15 +234,7 @@
             },
             "type": {
               "type": "string",
-              "enum": [
-                "connected",
-                "precedes",
-                "follows",
-                "prevents",
-                "optional",
-                "external_link",
-                "map_link"
-              ]
+              "pattern": "\\S"
             }
           },
           "required": ["node_id"],
@@ -211,13 +272,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "enum": [
-                        "connected",
-                        "precedes",
-                        "follows",
-                        "prevents",
-                        "optional"
-                      ]
+                      "pattern": "^(?!(?:map_link|external_link)$).*\\S"
                     },
                     "connections": {
                       "type": "array",
@@ -257,13 +312,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "enum": [
-                        "connected",
-                        "precedes",
-                        "follows",
-                        "prevents",
-                        "optional"
-                      ]
+                      "pattern": "^(?!(?:map_link|external_link)$).*\\S"
                     },
                     "connections": {
                       "type": "array",
@@ -305,7 +354,7 @@
                 },
                 "type": {
                   "type": "string",
-                  "enum": ["map_link", "external_link"]
+                  "pattern": "\\S"
                 },
                 "url": {
                   "type": "string",

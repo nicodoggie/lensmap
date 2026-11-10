@@ -18,15 +18,15 @@
     "pack:zed": "node scripts/zed-release.ts",
     "test:zed-package": "node scripts/zed-release.ts --test",
     "test:e2e": "pnpm build && playwright test --config apps/web/playwright.config.ts",
-    "schema:export": "pnpm --filter @lensmap/document build && node packages/document/dist/export-schema.js schemas/lensmap.experimental-v1.schema.json"
+    "schema:export": "pnpm --filter @lensmap/document build && node packages/document/dist/export-schema.js schemas/lensmap.experimental-v1.schema.json schemas/lensmap.lenstypes.experimental.schema.json && biome format --write schemas/lensmap.experimental-v1.schema.json schemas/lensmap.lenstypes.experimental.schema.json"
   },
   "engines": {
     "node": ">=24.16.0"
   },
   "devDependencies": {
-    "@types/node": "24.19.2",
     "@biomejs/biome": "2.6.4",
     "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
     "turbo": "2.11.10",
     "typescript": "7.0.2"
   }

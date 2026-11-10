@@ -17,6 +17,7 @@ export interface Props {
   graph: GraphData;
   rendered: Record<string, string>;
   inspectorId?: string;
+  mapId?: string;
   /** Optional host-rendered connection label; the shared renderer owns direction/wording. */
   getLabel?: (node: GraphNode) => string;
 }
@@ -78,7 +79,52 @@ export default function ViewerHost({
   rendered,
   inspectorId = "default",
   getLabel,
+  mapId,
 }: Props) {
+  const [liveGraph, setLiveGraph] = useState(graph);
+  const [stale, setStale] = useState(false);
+  useEffect(() => setLiveGraph(graph), [graph]);
+  useEffect(() => {
+    const hot = (
+      import.meta as ImportMeta & {
+        hot?: {
+          on(
+            event: string,
+            callback: (data: {
+              id: string;
+              stale: boolean;
+              edges?: GraphData["edges"];
+              nodes?: Pick<GraphNode, "key" | "destination">[];
+            }) => void,
+          ): void;
+          off(event: string, callback: unknown): void;
+        };
+      }
+    ).hot;
+    if (!hot || !mapId) return;
+    const update = (data: {
+      id: string;
+      stale: boolean;
+      edges?: GraphData["edges"];
+      nodes?: Pick<GraphNode, "key" | "destination">[];
+    }) => {
+      if (data.id !== mapId) return;
+      setStale(data.stale);
+      const edges = data.edges;
+      if (!data.stale && edges)
+        setLiveGraph((previous) => ({
+          ...previous,
+          edges,
+          nodes: previous.nodes.map((node) => ({
+            ...node,
+            destination: data.nodes?.find((update) => update.key === node.key)
+              ?.destination,
+          })),
+        }));
+    };
+    hot.on("lensmap:vocabulary", update);
+    return () => hot.off("lensmap:vocabulary", update);
+  }, [mapId]);
   const [targets, setTargets] = useState<HTMLElement[]>([]);
   useEffect(() => {
     setTargets(
@@ -92,23 +138,30 @@ export default function ViewerHost({
     );
   }, [inspectorId]);
   return (
-    <Viewer
-      graph={graph}
-      embedded
-      showInspector={false}
-      renderExternalInspector={(context) =>
-        targets.map((target, index) =>
-          createPortal(
-            <Inspector
-              context={context}
-              rendered={rendered}
-              getLabel={getLabel}
-            />,
-            target,
-            String(index),
-          ),
-        )
-      }
-    />
+    <div data-lensmap-stale={String(stale)}>
+      {stale && (
+        <p role="status">
+          Connection vocabulary is invalid. Showing the last valid map.
+        </p>
+      )}
+      <Viewer
+        graph={liveGraph}
+        embedded
+        showInspector={false}
+        renderExternalInspector={(context) =>
+          targets.map((target, index) =>
+            createPortal(
+              <Inspector
+                context={context}
+                rendered={rendered}
+                getLabel={getLabel}
+              />,
+              target,
+              String(index),
+            ),
+          )
+        }
+      />
+    </div>
   );
 }

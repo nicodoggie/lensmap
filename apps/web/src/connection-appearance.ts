@@ -16,3 +16,19 @@ export function connectionAppearance(
       : {}),
   };
 }
+
+/** Compatibility for graphs produced before resolved presentation was added. */
+export function fallbackPresentation(
+  type?: ConnectionType,
+): import("@lensmap/document").ConnectionPresentation {
+  const appearance = connectionAppearance(type);
+  return {
+    strokeWidth: 2.5,
+    lineStyle: appearance.dashed ? "dashed" : "solid",
+    lineColor: "auto",
+    startMarker: appearance.start ?? "none",
+    endMarker: appearance.end ?? "none",
+    text: "connected to",
+    reverseText: "connected to",
+  };
+}

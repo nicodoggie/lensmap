@@ -28,7 +28,7 @@ nodes:
       - node_id: first
 ```
 
-- The root has `version` (exactly the string `v1`), `nodes`, and optional `frontmatter`. Missing/other versions are errors; no legacy version is inferred. `nodes: []` is a valid empty playground.
+- The root has `version` (exactly the string `v1`), `nodes`, and optional `frontmatter` and `connection_types`. Missing/other versions are errors; no legacy version is inferred. `nodes: []` is a valid empty playground.
 - `frontmatter` is an open metadata object: `{}` is valid; null, arrays and scalar values are not. Its keys and nested values are opaque to the document engine. A host such as Astro owns metadata validation, defaults and transforms; authored metadata remains distinct from the host's effective entry data. Metadata does not create thoughts or connections, authorize executable content or enter the viewer graph/snapshot. Native source locations and minimal content edits still refer to the original YAML, without stripping or reserializing metadata.
 - Each top-level entry is a Markdown string or rich node. There is no mandatory central node or automatic document-title node.
 - A rich node supports `id`, `summary`, `full_text`, `position`, and `connections`. Ordinary thoughts supply at least one defined content field (`summary` or `full_text`). Portal thoughts additionally accept a matching link `type` and nonblank `url`, without requiring prose. Summary-only and full-text-only nodes work without duplicated prose.
@@ -41,7 +41,7 @@ nodes:
 
 ## Default connections and portals
 
-The supplied types are `connected`, `precedes`, `follows`, `prevents`, `optional`, `external_link` and `map_link`. Unknown names are validation errors. `connected` is an explicit neutral alias; omission remains valid and genuinely untyped. Add `type` directly beside `node_id` or inline `summary`/`full_text`, not inside a new wrapper.
+The supplied types are `connected`, `precedes`, `follows`, `prevents`, `optional`, `external_link` and `map_link`. Additional names require a declaration in the effective vocabulary; undeclared names are semantic validation errors. `connected` is an explicit neutral alias; omission remains valid and genuinely untyped. Add `type` directly beside `node_id` or inline `summary`/`full_text`, not inside a new wrapper.
 
 ```yaml
 version: v1
@@ -62,9 +62,38 @@ Link thoughts retain IDs, notes, positions and local connections. Type plus URL 
 
 Neutral edges are solid and unmarked regardless of nesting/reference syntax. Sequence arrows point toward the later item; `prevents` has two parallel blocking bars at the target, with an empty gap rather than a connecting stroke between them; `optional` is dashed. Portals use unarrowed connectors and destination icons. These conventions do not execute domain logic. See [the complete connection contract](default-connections.md) for activation, source-relative loading, anchors and history.
 
+## Custom declarations and shared vocabulary
+
+`connection_types` maps exact, nonblank names to strict declarations. Use
+`extends` for single-parent inheritance. Presentation fields are `stroke-width`,
+`line-style`, `line-color`, `start-marker` and `end-marker`. Supply `text` and
+`reverse_text` together or omit both to inherit wording. These are plain phrases,
+not executable semantics.
+
+The engine merges explicitly authored fields in this order: built-ins, the
+selected shared vocabulary, then the map's declarations. It resolves parents
+after merging, so parent restyling reaches descendants. Unknown parents, cycles,
+invalid CSS values and changes to a built-in's destination capability are errors.
+Custom descendants of `map_link` and `external_link` retain the corresponding
+core destination capability; a custom name alone grants no host permission.
+
+A known project root can contain strict JSON `lensmap.config.json` with exactly
+one `types` string, naming a config-relative `.lenstypes` YAML file. That file
+contains only a `connection_types` mapping. There is no ancestor search, remote
+vocabulary import, executable configuration or browser filesystem discovery.
+Inline declarations need no configuration file. See the
+[complete declaration contract](custom-connection-types.md) and
+[runnable shared example](../examples/custom-connection-types/README.md).
+
+`pnpm schema:export` also generates
+`schemas/lensmap.lenstypes.experimental.schema.json` from the owning vocabulary
+Zod schema. Both exports describe structure; effective vocabulary resolution,
+CSS semantics, IDs and references remain engine checks. These schemas are local,
+experimental artifacts rather than new public compatibility promises.
+
 ## Validation and errors
 
-Objects are strict at the root, node, position and reference boundaries; only the explicitly supported root `frontmatter` object is open-ended. Unsupported fields are rejected rather than silently stripped. This deliberately describes today's supported subset, not a claim that future v1 will contain only these fields. Mixed reference/content objects, obsolete `items` wrappers, wrong field types, duplicate IDs and unknown references are errors.
+Objects are strict at the root, node, position, reference and declaration-field boundaries. The `connection_types` mapping permits authored names; `frontmatter` alone carries opaque metadata. Unsupported fields are rejected rather than silently stripped. This deliberately describes today's supported subset, not a claim that future v1 will contain only these fields. Mixed reference/content objects, obsolete `items` wrappers, wrong field types, duplicate IDs and unknown references are errors.
 
 The maintained YAML parser handles syntax and duplicate-key errors; unresolved tags/warnings are surfaced rather than quietly discarded. Acyclic aliases may share input data, but recursive YAML object aliases are rejected with guidance to use `node_id` for graph cycles. The parser retains its native alias-expansion protection; Lensmap adds no arbitrary source-length, node-count or graph-depth cap.
 
@@ -72,6 +101,6 @@ Apply is transactional from the UI's perspective: parse/validate/normalize/layou
 
 ## Still incomplete
 
-Custom type declarations/imports and configurable default connection types remain out of scope. The supplied vocabulary and portal navigation are implemented; [qualification and current host limits](verification/default-connections.md) distinguish browser evidence from native editor evidence.
+Configurable default connection types and vocabulary imports remain out of scope. Custom declarations and project vocabulary are implemented in this source checkout; see [qualification and native limits](verification/custom-connection-types.md). The supplied vocabulary and portal navigation are implemented; [default-connection qualification](verification/default-connections.md) distinguishes browser evidence from native editor evidence.
 
-Host-specific metadata interpretation, custom edge vocabularies, relative coordinates, heading anchors, migration rules, import/export, durable playground saving and embedded Markdown editing assistance remain incomplete. The attached language server offers authored-ID completion in valid source and supplied type-name completion while a type is being written, independently of the standalone textarea. See the editable `apps/web/src/sample.yaml` for playground input and [Zed setup](zed-browser.md) for the editor bridge.
+Host-specific metadata interpretation, relative coordinates, heading anchors, migration rules, import/export, durable playground saving and embedded Markdown editing assistance remain incomplete. The attached language server offers authored-ID completion in valid source and effective type-name completion while a type is being written, independently of the standalone textarea. See the editable `apps/web/src/sample.yaml` for playground input and [Zed setup](zed-browser.md) for the editor bridge.

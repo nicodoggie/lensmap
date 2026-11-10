@@ -1,3 +1,13 @@
+import {
+  type ConnectionPresentation,
+  type ResolvedConnectionType,
+  resolveVocabulary,
+  type VocabularyInput,
+  VocabularySchema,
+} from "./vocabulary.js";
+
+export * from "./vocabulary.js";
+
 import type { Node } from "yaml";
 import { isAlias, isMap, isScalar, parseDocument } from "yaml";
 import { z } from "zod";
@@ -17,11 +27,19 @@ export { ConnectionTypeSchema, DocumentSchema } from "./v1/schema.js";
 export function generateJSONSchema() {
   return z.toJSONSchema(DocumentSchema, { io: "input" });
 }
+export function generateVocabularyJSONSchema() {
+  return z.toJSONSchema(VocabularySchema, { io: "input" });
+}
 /** Read the edge from the inspected endpoint, independently of structural kind. */
 export function connectionWording(
   type: ConnectionType | undefined,
   direction: "outgoing" | "incoming",
+  presentation?: ConnectionPresentation,
 ): string {
+  if (presentation)
+    return direction === "outgoing"
+      ? presentation.text
+      : presentation.reverseText;
   switch (type) {
     case "precedes":
       return direction === "outgoing" ? "precedes" : "follows";
@@ -93,6 +111,7 @@ export type Connection = {
   to: string;
   kind: "branch" | "cross";
   type?: ConnectionType;
+  presentation?: ConnectionPresentation;
   path: string;
 };
 export type SemanticGraph = { nodes: Thought[]; edges: Connection[] };
@@ -102,8 +121,10 @@ export type Binding = {
   span: SourceSpan;
   ownerKey?: string;
 };
-export type Diagnostic = { message: string; range: SourceRange };
+export type Diagnostic = { message: string; range: SourceRange; uri?: string };
 export type DocumentSnapshot = {
+  vocabulary?: Record<string, ResolvedConnectionType>;
+  graphGeneration?: number;
   attachmentId?: string;
   uri: string;
   revision: number;
@@ -183,6 +204,7 @@ export class DocumentSession {
     readonly uri: string,
     source = "",
     revision = 0,
+    private vocabularyInput: VocabularyInput = {},
   ) {
     this.text = source;
     this.version = revision;
@@ -199,6 +221,10 @@ export class DocumentSession {
       bindings: [],
     };
     this.analyze();
+  }
+  setVocabulary(input: VocabularyInput): DocumentSnapshot {
+    this.vocabularyInput = input;
+    return this.analyze();
   }
   get source() {
     return this.text;
@@ -273,6 +299,21 @@ export class DocumentSession {
           { offset: located?.offset ?? 0 },
         );
       }
+      const vocabulary = resolveVocabulary(
+        this.vocabularyInput,
+        result.data.connection_types,
+        { source: this.text, uri: this.uri },
+      );
+      const definition = (type: string, offset = 0) => {
+        if (!Object.hasOwn(vocabulary, type))
+          throw Object.assign(
+            new Error(
+              `Unknown connection type: ${type}. Available types: ${Object.keys(vocabulary).join(", ")}`,
+            ),
+            { offset },
+          );
+        return vocabulary[type];
+      };
       const records: RecordNode[] = [];
       const edges: Connection[] = [];
       const bindings: Binding[] = [];
@@ -346,10 +387,26 @@ export class DocumentSession {
             : Array.isArray(entry)
               ? { full_text: null, connections: entry }
               : entry;
+        const coreKind =
+          content.type === undefined
+            ? "ordinary"
+            : definition(content.type, span.start).coreKind;
+        if (!parent && content.type !== undefined && coreKind === "ordinary")
+          throw Object.assign(
+            new Error("Ordinary relationship types are not starting thoughts"),
+            { offset: span.start },
+          );
+        if (
+          (coreKind === "ordinary" && content.url !== undefined) ||
+          (coreKind !== "ordinary" && content.url === undefined)
+        )
+          throw Object.assign(new Error("Invalid portal definition"), {
+            offset: span.start,
+          });
         const destination =
-          (content.type === "map_link" || content.type === "external_link") &&
+          (coreKind === "map_link" || coreKind === "external_link") &&
           content.url !== undefined
-            ? { kind: content.type, url: content.url }
+            ? { kind: coreKind, url: content.url }
             : undefined;
         const fallback =
           content.summary === undefined && content.full_text === undefined
@@ -462,9 +519,10 @@ export class DocumentSession {
             { offset: ref.span.start },
           );
         if (
-          (ref.type === "map_link" || ref.type === "external_link") &&
+          ref.type !== undefined &&
+          definition(ref.type, ref.span.start).coreKind !== "ordinary" &&
           records.find((r) => r.thought.key === to)?.thought.destination
-            ?.kind !== ref.type
+            ?.kind !== definition(ref.type, ref.span.start).coreKind
         )
           throw Object.assign(
             new Error(
@@ -490,6 +548,13 @@ export class DocumentSession {
           ownerKey: ref.from,
         });
       }
+      for (const edge of edges)
+        if (edge.type !== undefined) {
+          const { coreKind: _coreKind, ...presentation } = definition(
+            edge.type,
+          );
+          edge.presentation = presentation;
+        }
       this.records = records;
       this.validSource = this.text;
       this.state = {
@@ -498,6 +563,8 @@ export class DocumentSession {
         revision: this.version,
         analyzedRevision: this.version,
         graphRevision: this.version,
+        graphGeneration: (this.state.graphGeneration ?? 0) + 1,
+        vocabulary,
         valid: true,
         pending: false,
         graph: { nodes: records.map((r) => r.thought), edges },
@@ -509,6 +576,8 @@ export class DocumentSession {
         typeof error === "object" && error !== null && "offset" in error
           ? Number(error.offset)
           : 0;
+      const context = error as { uri?: string; source?: string };
+      const diagnosticSource = context?.source ?? this.text;
       this.state = {
         ...this.state,
         analyzedRevision: this.version,
@@ -518,7 +587,11 @@ export class DocumentSession {
         diagnostics: [
           {
             message: error instanceof Error ? error.message : String(error),
-            range: this.range({ start: offset, end: offset }),
+            range: {
+              start: offsetToPosition(diagnosticSource, offset),
+              end: offsetToPosition(diagnosticSource, offset),
+            },
+            ...(context?.uri ? { uri: context.uri } : {}),
           },
         ],
       };
@@ -628,7 +701,12 @@ export class DocumentSession {
         source.slice(0, change.start) +
         change.newText +
         source.slice(change.end);
-    const candidate = new DocumentSession(this.uri, source, this.version);
+    const candidate = new DocumentSession(
+      this.uri,
+      source,
+      this.version,
+      this.vocabularyInput,
+    );
     if (!candidate.snapshot().valid)
       throw new ContentEditError(
         "invalid-edit",

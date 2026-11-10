@@ -72,3 +72,23 @@ it("retains portal and relationship metadata without relayout on metadata-only e
   });
   expect(second.edges[0]).toMatchObject({ type: "prevents", kind: "branch" });
 });
+
+it("projects presentation-only changes without moving centres", () => {
+  const first = layoutSemanticGraph(graph);
+  const presentation = {
+    strokeWidth: 9,
+    lineStyle: "dotted" as const,
+    lineColor: "red",
+    startMarker: "circle" as const,
+    endMarker: "diamond" as const,
+    text: "reveals",
+    reverseText: "is revealed by",
+  };
+  const changed = {
+    ...graph,
+    edges: graph.edges.map((edge) => ({ ...edge, presentation })),
+  };
+  const next = layoutSemanticGraph(changed, { semantic: graph, layout: first });
+  expect(next.edges[0]).toHaveProperty("presentation", presentation);
+  expect(next.nodes).toEqual(first.nodes);
+});

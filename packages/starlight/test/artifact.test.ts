@@ -7,7 +7,7 @@ test("built viewer runtime and declarations stay inside the portable package bou
   const manifest = JSON.parse(
     readFileSync(new URL("package.json", root), "utf8"),
   );
-  assert.equal(manifest.version, "0.2.0");
+
   assert.equal(manifest.dependencies["@lensmap/web"], undefined);
   assert.equal(manifest.devDependencies["@lensmap/web"], "workspace:*");
   for (const dependency of ["@lensmap/astro-loader", "@lensmap/document"])

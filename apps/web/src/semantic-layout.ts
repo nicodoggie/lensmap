@@ -55,13 +55,16 @@ export function layoutSemanticGraph(
       branch: colours.get(key) ?? "blue",
     }),
   );
-  const edges = graph.edges.map(({ key, from, to, kind, type }) => ({
-    key,
-    from,
-    to,
-    kind,
-    ...(type !== undefined ? { type } : {}),
-  }));
+  const edges = graph.edges.map(
+    ({ key, from, to, kind, type, presentation }) => ({
+      key,
+      from,
+      to,
+      kind,
+      ...(type !== undefined ? { type } : {}),
+      ...(presentation ? { presentation } : {}),
+    }),
+  );
   if (previous && layoutKey(previous.semantic) === layoutKey(graph)) {
     const points = new Map(
       previous.layout.nodes.map((node) => [node.key, node]),

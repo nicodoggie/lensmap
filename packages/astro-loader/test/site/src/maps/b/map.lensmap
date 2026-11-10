@@ -1,6 +1,9 @@
 version: v1
 frontmatter:
   title: Denied
+connection_types:
+  host_relation:
+    stroke-width: 3
 nodes:
   - full_text: |
       # Denied thought
@@ -12,3 +15,6 @@ nodes:
       ![Inert local asset](../a/asset.svg)
 
       <script>globalThis.MUST_NOT_EXECUTE = true</script>
+    connections:
+      - type: host_relation
+        full_text: Styled child

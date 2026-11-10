@@ -256,12 +256,19 @@ describe("default connections", () => {
             true,
           ] as [unknown[], boolean],
       ),
+      ...["Precedes", "unknown", " precedes"].map(
+        (type) =>
+          [
+            [{ full_text: "A", connections: [{ type, full_text: "B" }] }],
+            true,
+          ] as [unknown[], boolean],
+      ),
       [[{ type: "map_link", url: "next" }], true],
       [
         [{ type: "external_link", url: "https://example.org", summary: null }],
         true,
       ],
-      ...[null, [], "Precedes", "unknown", " precedes"].map(
+      ...[null, []].map(
         (type) =>
           [
             [{ full_text: "A", connections: [{ type, full_text: "B" }] }],
