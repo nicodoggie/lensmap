@@ -46,6 +46,13 @@ analysis cannot see template references; Astro's native checker owns the templat
 ## Source and presentation
 
 - `src/maps/hero.lensmap` owns thought copy, destinations, styles and desktop pins.
+- `src/components/MapSession.tsx` adapts the existing navigation controller to the
+  site, retaining map views and distinct browser visit identities. Only the home
+  state gets marketing chrome; examples expose the normal viewer and inspector.
+- `src/maps/examples.lensmap` is the map-of-maps index. `src/example-maps.ts` reuses
+  existing sample source, and `src/pages/[...map].lensmap.ts` validates and emits
+  raw documents through native Astro static endpoints. No runtime compiler or
+  custom filesystem-serving endpoint is involved.
 - `src/hero.ts` initializes a measured site-owned view; its narrow composition
   does not edit the authored source. Subsequent resize preserves exploration.
 - `src/pages/index.astro` provides metadata and a no-JavaScript fallback.
@@ -55,6 +62,14 @@ analysis cannot see template references; Astro's native checker owns the templat
   demonstration, not a separately maintained diagram.
 - Hero overrides are site-scoped. Other viewer consumers and npm packages are
   unchanged.
+
+The homepage's **Examples** portal enters the index. To enter directly, use
+`/lensmap/?map=examples/index.lensmap`. Sources live under
+`/lensmap/examples/`; the hero's source base is `/lensmap/hero.lensmap` so its
+relative docs destinations retain their meaning. Thought links retain both the
+resource and fragment. Browser and explicit map Back/Forward restore in-memory
+views; reload supports direct entry but does not persist the previous visit stack.
+With JavaScript disabled, the Examples fallback links to the ordinary docs.
 
 ## Deploy — separate approval
 

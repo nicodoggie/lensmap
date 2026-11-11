@@ -1,0 +1,67 @@
+version: v1
+node_styles:
+  index:
+    background-color: "#dfeacb"
+    color: "#14261e"
+    font-family: "Georgia, serif"
+    font-size: 24px
+    --lensmap-scale: 1.8
+  portal:
+    background-color: "#233f3c"
+    color: "#e8eee2"
+    font-size: 16px
+    padding: 8px
+    --lensmap-scale: 1.5
+nodes:
+  - id: examples
+    summary: Examples
+    classes: [index]
+    position: { x: 0, y: 0 }
+    full_text: |
+      # A map of maps
+      These portals open separate Lensmap documents, not copies inside this map.
+      Select a portal, then use its Open action, double-click or press Enter.
+      Back and Forward retain your previous map, selection and view.
+    connections:
+      - id: basics
+        summary: Start small
+        type: map_link
+        url: ./quickstart.lensmap
+        classes: [portal]
+        position: { x: -240, y: -130 }
+        full_text: Markdown thoughts, unresolved ideas, convergence and a cycle.
+      - id: ferry-map
+        summary: Night Ferry
+        type: map_link
+        url: ./night-ferry.lensmap
+        classes: [portal]
+        position: { x: 0, y: -250 }
+        full_text: Enter the whole ferry map in Overview and explore from there.
+      - id: tide-window
+        summary: Jump to the tide window
+        type: map_link
+        url: ./night-ferry.lensmap#tides
+        classes: [portal]
+        position: { x: 240, y: -130 }
+        full_text: The same document, entered in Lens view at an authored thought ID.
+      - id: styling
+        summary: Node styling
+        type: map_link
+        url: ./node-styling/map.lensmap
+        classes: [portal]
+        position: { x: 240, y: 130 }
+        full_text: Reusable classes, inline CSS and circles that grow around their summaries.
+      - id: relationships
+        summary: Custom types
+        type: map_link
+        url: ./connection-types.lensmap
+        classes: [portal]
+        position: { x: 0, y: 250 }
+        full_text: A self-contained vocabulary with a custom reveals relationship.
+      - id: guide
+        summary: Read the examples guide
+        type: external_link
+        url: ../docs/examples/
+        classes: [portal]
+        position: { x: -240, y: 130 }
+        full_text: Conventional documentation with the example's copyable source.

@@ -152,10 +152,14 @@ test("pointer panning preserves selection and an external hero destination opens
 
 test("static fallback has meaningful text and native documentation links without JavaScript", async ({
   browser,
+  baseURL,
 }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    baseURL,
+  });
   const page = await context.newPage();
-  await page.goto("http://127.0.0.1:4321/lensmap/");
+  await page.goto("./");
   await expect(
     page.getByRole("heading", { name: "Lensmap", exact: true }),
   ).toBeVisible();

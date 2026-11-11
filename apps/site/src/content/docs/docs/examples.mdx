@@ -8,6 +8,22 @@ sidebar:
 import MapExample from '../../../components/MapExample.astro';
 import source from '../../../maps/example.lensmap?raw';
 
+## Explore a map of maps
+
+[Enter the Examples map](../../?map=examples/index.lensmap) to follow real portals
+into the quickstart, Night Ferry, node-styling and custom-relationship examples.
+Each destination is a separate `.lensmap` document, hosted with this site.
+
+Whole-map portals begin in Overview. **Jump to the tide window** enters the ferry
+map at a particular thought in Lens view. Select a portal before opening it;
+selection alone does not navigate. **Back** and **Forward** retain your map,
+selection and camera, including the homepage. A reload reopens the linked map but
+does not persist the earlier in-memory visit stack.
+
+The raw source remains available at the map's `.lensmap` address. Relative links
+resolve beside that source, not beside this documentation page. Fetched maps use
+inert Markdown, not executable MDX; genuinely remote resources still obey CORS.
+
 ## Two paths, one crossing
 
 The archive and ferryman branches converge on the **same** crossing thought.

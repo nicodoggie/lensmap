@@ -3,6 +3,16 @@
   "tasks": {
     "dev": { "cache": false, "persistent": true },
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "@lensmap/site#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/examples/quickstart.lensmap",
+        "$TURBO_ROOT$/examples/night-ferry.lensmap",
+        "$TURBO_ROOT$/examples/node-styling/map.lensmap"
+      ]
+    },
     "@lensmap/language-server#build": {
       "dependsOn": ["^build", "@lensmap/web#build"],
       "outputs": ["dist/**"]

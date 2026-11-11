@@ -47,8 +47,8 @@ nodes:
             classes: [satellite]
           - id: examples
             summary: Examples
-            type: external_link
-            url: docs/examples/
+            type: map_link
+            url: examples/index.lensmap
             position: {x: -190, y: 230}
             classes: [satellite]
           - id: documentation

@@ -13,7 +13,17 @@ if (!snapshot.valid || !snapshot.graph)
 const graph = layoutSemanticGraph(snapshot.graph);
 const navigation = graph.nodes.flatMap((node) =>
   node.destination
-    ? [{ title: node.title, ...siteDestination(node.destination.url, base) }]
+    ? [
+        {
+          title: node.title,
+          ...siteDestination(
+            node.destination.kind === "map_link"
+              ? "docs/examples/"
+              : node.destination.url,
+            base,
+          ),
+        },
+      ]
     : [],
 );
 ---

@@ -10,50 +10,50 @@
   padding: 0;
   background: transparent;
 }
-.hero-map .workspace,
-.hero-map .map-column {
+.hero-map .home-map .workspace,
+.hero-map .home-map .map-column {
   height: 100%;
   border: 0;
   border-radius: 0;
   background: transparent;
 }
-.hero-map .map {
+.hero-map .home-map .map {
   height: 100%;
   min-height: 0;
   background: transparent;
   border: 0;
 }
-.hero-map .toolbar,
-.hero-map .map-footer,
-.hero-map .focus-ring,
-.hero-map .zoom-controls,
-.hero-map .page-footer {
+.hero-map .home-map .toolbar,
+.hero-map .home-map .map-footer,
+.hero-map .home-map .focus-ring,
+.hero-map .home-map .zoom-controls,
+.hero-map .home-map .page-footer {
   display: none;
 }
-.hero-map .node {
+.hero-map .home-map .node {
   box-shadow: 0 16px 40px #0002;
 }
-.hero-map .edge-halo {
+.hero-map .home-map .edge-halo {
   stroke: #111e1b;
 }
-.hero-map .edge {
+.hero-map .home-map .edge {
   opacity: 0.55;
 }
 
-.hero-map .node.selected,
-.hero-map .node.connected {
+.hero-map .home-map .node.selected,
+.hero-map .home-map .node.connected {
   box-shadow: 0 12px 30px #0002;
   filter: none;
 }
-.hero-map .node.selected {
+.hero-map .home-map .node.selected {
   box-shadow:
     0 0 0 1px #dbeac330,
     0 10px 36px #0002;
 }
-.hero-map .node-summary {
+.hero-map .home-map .node-summary {
   max-width: 100%;
 }
-.hero-map .node:has(.destination-icon) {
+.hero-map .home-map .node:has(.destination-icon) {
   flex-direction: column;
   gap: 6px;
 }
@@ -81,4 +81,32 @@
   color: #92a690;
   font-size: 11px;
   letter-spacing: 0.06em;
+}
+.example-map .hero-canvas {
+  height: auto;
+}
+.site-map-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px clamp(20px, 5vw, 80px);
+  font-size: 13px;
+}
+.site-map-navigation button {
+  font: inherit;
+  color: #e9f1df;
+  background: #1d3329;
+  border: 1px solid #7b9c76;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.site-map-navigation button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.site-map-navigation button:focus-visible {
+  outline: 2px solid #e8c17b;
+  outline-offset: 3px;
 }
