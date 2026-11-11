@@ -3,6 +3,13 @@ import { expect, test } from "@playwright/test";
 
 const evidence = resolve("../../artifacts/checkpoints/site-map-navigation");
 
+test.beforeEach(async ({ page }) => {
+  // Public HTTP does not expose randomUUID, unlike secure localhost previews.
+  await page.addInitScript(() => {
+    Object.defineProperty(crypto, "randomUUID", { value: undefined });
+  });
+});
+
 const node = (page: import("@playwright/test").Page, id: string) =>
   page.locator(`.hero-map [data-anchor="${id}"]`);
 

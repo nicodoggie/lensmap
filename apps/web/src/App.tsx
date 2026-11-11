@@ -5,6 +5,7 @@ import {
   address,
   type MapEntry,
   type MapLoader,
+  navigationId,
   thoughtURL,
 } from "./map-navigation";
 import Sidebar from "./Sidebar";
@@ -58,7 +59,7 @@ export default function App() {
       graph: parsed.graph,
       source,
       draft: source,
-      attachment: crypto.randomUUID(),
+      attachment: navigationId(),
     };
   };
   const route = () => {
@@ -81,7 +82,7 @@ export default function App() {
       ? (history.state as { lensmapVisit?: string } | null)?.lensmapVisit
       : undefined;
     const lensmapVisit =
-      existing && visits.current.has(existing) ? existing : crypto.randomUUID();
+      existing && visits.current.has(existing) ? existing : navigationId();
     visits.current.set(lensmapVisit, {
       index: navigation.index,
       entry: navigation.current,
@@ -237,7 +238,7 @@ export default function App() {
               }
               entry.graph = result.graph;
               entry.source = entry.draft;
-              entry.attachment = crypto.randomUUID();
+              entry.attachment = navigationId();
               setError("");
               setStatus(
                 `Applied ${result.graph.nodes.length} thoughts and ${result.graph.edges.length} connections.`,

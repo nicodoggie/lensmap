@@ -16,6 +16,7 @@ import {
   address,
   type MapEntry,
   type MapLoader,
+  navigationId,
   thoughtURL,
 } from "../../../web/src/map-navigation";
 import {
@@ -77,7 +78,7 @@ export default function MapSession({
       uri: resolved,
       graph: parsed.graph,
       source,
-      attachment: crypto.randomUUID(),
+      attachment: navigationId(),
     };
   };
   const route = () => {
@@ -94,7 +95,7 @@ export default function MapSession({
   const remember = (replace: boolean) => {
     const existing = replace ? history.state?.lensmapSiteVisit : undefined;
     const id =
-      existing && visits.current.has(existing) ? existing : crypto.randomUUID();
+      existing && visits.current.has(existing) ? existing : navigationId();
     visits.current.set(id, {
       index: navigation.index,
       entry: navigation.current,

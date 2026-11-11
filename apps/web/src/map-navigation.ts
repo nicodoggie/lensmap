@@ -2,6 +2,12 @@ import { resolveThoughtAnchor } from "@lensmap/document";
 import type { GraphData } from "./graph";
 import type { ViewerState } from "./Viewer";
 
+/** Opaque visit/attachment identity, including across reloads and on HTTP hosts. */
+export function navigationId(): string {
+  // Unlike randomUUID, getRandomValues is available outside secure contexts.
+  return crypto.getRandomValues(new Uint32Array(4)).join("-");
+}
+
 /** A public thought link includes its source resource, never a bootstrap token. */
 export function thoughtURL(
   viewer: string,
