@@ -14,9 +14,9 @@ pnpm exec turbo run build --filter=@lensmap/site
 pnpm --filter @lensmap/site preview --host 127.0.0.1 --port 4321
 ```
 
-Open <http://127.0.0.1:4321/lensmap/>. Docs are at
-<http://127.0.0.1:4321/lensmap/docs/>. Direct routes, assets and search use the
-project base, not the origin root.
+Open <http://127.0.0.1:4321/>. Docs are at
+<http://127.0.0.1:4321/docs/>. Direct routes, assets and search use the
+domain root, matching <https://lensmap.thekennel.info/>.
 
 For development, build the workspace dependencies once as above, then run:
 
@@ -64,8 +64,8 @@ analysis cannot see template references; Astro's native checker owns the templat
   unchanged.
 
 The homepage's **Examples** portal enters the index. To enter directly, use
-`/lensmap/?map=examples/index.lensmap`. Sources live under
-`/lensmap/examples/`; the hero's source base is `/lensmap/hero.lensmap` so its
+`/?map=examples/index.lensmap`. Sources live under
+`/examples/`; the hero's source base is `/hero.lensmap` so its
 relative docs destinations retain their meaning. Thought links retain both the
 resource and fragment. Browser and explicit map Back/Forward restore in-memory
 views; reload supports direct entry but does not persist the previous visit stack.
@@ -79,6 +79,27 @@ site/dependency changes on `main`. GitHub Pages must be configured to use GitHub
 Actions; its environment protections remain a repository-owner decision.
 
 Local implementation does **not** authorize pushing, enabling Pages or dispatching
-a deployment. The intended URL is <https://nicodoggie.github.io/lensmap/>; that
-address is not a claim of live availability. After an approved deployment, verify
-that URL, a direct docs route, generated assets, search and a hydrated example.
+a deployment. The production domain is <https://lensmap.thekennel.info/>; this
+configuration is not itself a claim of live availability. After an approved
+deployment, verify that URL, a direct docs route, generated assets, search and a
+hydrated example.
+
+### Custom domain
+
+The site stays in `nicodoggie/lensmap`; no organisation or repository transfer is
+needed. In this repository's Pages settings, set the custom domain to
+`lensmap.thekennel.info` **before** creating its Cloudflare DNS record:
+
+| Type | Name | Target | Proxy | TTL |
+| --- | --- | --- | --- | --- |
+| CNAME | `lensmap` | `nicodoggie.github.io` | DNS only | Auto |
+
+Do not include `/lensmap` in the DNS target or add a wildcard record. This site
+uses an Actions-based publisher, so GitHub's Pages setting owns the domain; a
+repository `CNAME` file is not required. Keep `astro.config.mjs` at the custom
+origin with base `/`, and rebuild when changing the domain or base. Once GitHub
+has issued its certificate, enable Enforce HTTPS and verify the actual HTTPS site.
+
+Read back both the exact Pages setting and DNS record after any change. Domain
+verification through GitHub's account settings is recommended before publishing
+DNS. Preserve unrelated DNS records and domain/account settings.

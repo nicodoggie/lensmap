@@ -7,6 +7,10 @@ test("hero is a real readable lens with visible satellites and working site navi
   page,
 }) => {
   await page.goto("./");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://lensmap.thekennel.info/",
+  );
   const hero = page.locator(".hero-map");
   const name = hero.locator('[data-anchor="lensmap"]');
   await expect(name).toBeVisible();
@@ -28,11 +32,11 @@ test("hero is a real readable lens with visible satellites and working site navi
   await docs.click();
   await expect(
     page.getByRole("link", { name: "Open Documentation", exact: true }),
-  ).toHaveAttribute("href", "/lensmap/docs/");
+  ).toHaveAttribute("href", "/docs/");
   await page
     .getByRole("link", { name: "Open Documentation", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/lensmap\/docs\/$/);
+  await expect(page).toHaveURL(/\/docs\/$/);
   await expect(
     page.getByRole("heading", { name: "Lensmap documentation", exact: true }),
   ).toBeVisible();
@@ -110,7 +114,7 @@ test("narrow initial framing is legible, exploration works and resizing does not
     .toBeGreaterThan(1);
   await hero.locator('[data-anchor="documentation"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/lensmap\/docs\/$/);
+  await expect(page).toHaveURL(/\/docs\/$/);
 });
 
 test("pointer panning preserves selection and an external hero destination opens separately", async ({
@@ -146,7 +150,7 @@ test("pointer panning preserves selection and an external hero destination opens
   await popup.waitForLoadState();
   expect(await popup.evaluate(() => window.opener === null)).toBe(true);
   await expect(popup).toHaveURL("https://github.com/nicodoggie/lensmap");
-  await expect(page).toHaveURL(/\/lensmap\/$/);
+  await expect(page).toHaveURL(new URL("/", page.url()).href);
   await popup.close();
 });
 
@@ -177,7 +181,7 @@ test("static fallback has meaningful text and native documentation links without
   await context.close();
 });
 
-test("ordinary docs reload under the project base, live example matches source, and search finds styling", async ({
+test("ordinary docs reload at the domain root, live example matches source, and search finds styling", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -215,7 +219,7 @@ test("ordinary docs reload under the project base, live example matches source, 
     .getByRole("link", { name: /Style thought bubbles/ })
     .first()
     .click();
-  await expect(page).toHaveURL(/\/lensmap\/docs\/node-styling\//);
+  await expect(page).toHaveURL(/\/docs\/node-styling\//);
   await expect(
     page.getByRole("heading", { name: "Style thought bubbles", exact: true }),
   ).toBeVisible();

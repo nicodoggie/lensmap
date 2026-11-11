@@ -4,8 +4,8 @@ import lensmap from "@lensmap/starlight";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
-  site: "https://nicodoggie.github.io",
-  base: "/lensmap",
+  site: "https://lensmap.thekennel.info",
+  base: "/",
   output: "static",
 
   integrations: [

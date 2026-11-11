@@ -3,8 +3,9 @@
 ## Status and goal
 
 Nico approved the conversational design on 2026-11-11. This document records that
-agreement and the reviewable implementation defaults below. No website has been
-implemented or deployed by this design checkpoint.
+agreement and the implementation defaults below. The initial site was deployed
+at the GitHub Pages project URL. Nico subsequently approved moving it to
+`https://lensmap.thekennel.info/`; the site runbook owns the custom-domain setup.
 
 Build a public site whose homepage is a real Lensmap, followed by conventional,
 readable documentation with source examples and live maps.
@@ -55,7 +56,7 @@ framework versions rather than independently choosing new ones.
 
 A custom Astro homepage owns the hero, normal site navigation, metadata and
 static fallback. Starlight owns conventional documentation routes and search.
-The production output is static, with GitHub Pages project base `/lensmap/` and
+The production output is static, with custom-domain base `/` on GitHub Pages and
 no server, accounts, database or runtime source compiler.
 
 ### Actual renderer reuse
@@ -92,7 +93,8 @@ outside the graph so single click does not become a dead end without an inspecto
 
 All ordinary navigation is rendered as native anchors in the static page.
 Internal URLs, generated assets, examples and search must work beneath the
-GitHub Pages base path, including direct visits and reloads of documentation.
+configured site base, now the domain root, including direct visits and reloads
+of documentation.
 
 ## Reviewable implementation defaults
 
@@ -113,7 +115,8 @@ GitHub Pages base path, including direct visits and reloads of documentation.
   repository specifications rather than reproducing internal plans or logs.
 - Prepare a GitHub Actions Pages workflow with least-required permissions and
   native Pages artifact/deployment actions. Look up current supported action
-  revisions before writing it. No custom domain, analytics or tracking.
+  revisions before writing it. The approved custom domain does not change hosting;
+  no analytics or tracking.
 
 ## Acceptance
 
@@ -123,7 +126,7 @@ GitHub Pages base path, including direct visits and reloads of documentation.
 - Site navigation works from the map and ordinary anchors; internal navigation
   stays in the site and GitHub opening is separate and safe.
 - No-JavaScript visitors receive meaningful title, subtitle and working links.
-- Conventional docs, examples, search and all assets resolve beneath `/lensmap/`.
+- Conventional docs, examples, search and all assets resolve beneath `/`.
   A direct documentation URL survives reload on the built static site.
 - Live examples agree with their displayed source; unknown types and styling
   remain subject to the owning engine rather than a parallel parser.
