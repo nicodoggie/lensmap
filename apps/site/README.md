@@ -63,6 +63,16 @@ analysis cannot see template references; Astro's native checker owns the templat
 - Hero overrides are site-scoped. Other viewer consumers and npm packages are
   unchanged.
 
+The hero demonstrates spatial focus rather than a fixed wordmark hierarchy:
+moving a navigation thought into the centre enlarges it while the old centre
+recedes. Its stronger site-owned lens and wider authored spacing use the normal
+shared projection/clearance, not a second renderer. Narrow screens use a broader
+lens shoulder and their own initial constellation so the Documentation entry
+remains visible. Camera framing keeps the initial bubbles in view; exploration
+can move peripheral context offscreen. There is no automatic camera tour, and
+resizing does not reset an explored view. The site tests exercise both pointer
+panning and desktop/narrow focus changes, not only the initial screenshot.
+
 The homepage's **Examples** portal enters the index. To enter directly, use
 `/?map=examples/index.lensmap`. Sources live under
 `/examples/`; the hero's source base is `/hero.lensmap` so its

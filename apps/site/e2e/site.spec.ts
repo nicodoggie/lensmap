@@ -3,6 +3,24 @@ import { expect, test } from "@playwright/test";
 
 const evidence = resolve("../../artifacts/checkpoints/github-pages-site");
 
+async function focusDocumentation(page: import("@playwright/test").Page) {
+  const name = page.locator('.hero-map [data-anchor="lensmap"]');
+  const docs = page.locator('.hero-map [data-anchor="documentation"]');
+  const oldName = await name.boundingBox();
+  const oldDocs = await docs.boundingBox();
+  if (!oldName || !oldDocs) throw Error("Missing initial hero geometry");
+  await docs.click();
+  await expect
+    .poll(async () => (await docs.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(oldDocs.width * 2);
+  const newName = await name.boundingBox();
+  const newDocs = await docs.boundingBox();
+  if (!newName || !newDocs) throw Error("Missing focused hero geometry");
+  expect(newName.width).toBeLessThan(oldName.width * 0.6);
+  expect(newDocs.width).toBeGreaterThan(newName.width * 1.25);
+  await expect(docs).toHaveAttribute("aria-pressed", "true");
+}
+
 test("hero is a real readable lens with visible satellites and working site navigation", async ({
   page,
 }) => {
@@ -28,8 +46,11 @@ test("hero is a real readable lens with visible satellites and working site navi
     path: `${evidence}/hero-desktop.png`,
     fullPage: true,
   });
-  const docs = hero.locator('[data-anchor="documentation"]');
-  await docs.click();
+  await focusDocumentation(page);
+  await page.screenshot({
+    path: `${evidence}/hero-desktop-focused.png`,
+    fullPage: true,
+  });
   await expect(
     page.getByRole("link", { name: "Open Documentation", exact: true }),
   ).toHaveAttribute("href", "/docs/");
@@ -77,7 +98,7 @@ test("narrow initial framing is legible, exploration works and resizing does not
   expect(name?.width).toBeGreaterThan(240);
   expect(
     await hero
-      .locator(".node:has(.destination-icon) .node-summary")
+      .locator(".node-summary")
       .evaluateAll(
         (labels) =>
           labels.length > 0 &&
@@ -91,6 +112,11 @@ test("narrow initial framing is legible, exploration works and resizing does not
   ).toBe(true);
   await page.screenshot({
     path: `${evidence}/hero-narrow.png`,
+    fullPage: true,
+  });
+  await focusDocumentation(page);
+  await page.screenshot({
+    path: `${evidence}/hero-narrow-focused.png`,
     fullPage: true,
   });
   const focal = hero.locator('[data-anchor="lensmap"]');
@@ -128,18 +154,24 @@ test("pointer panning preserves selection and an external hero destination opens
   const hero = page.locator(".hero-map");
   const name = hero.locator('[data-anchor="lensmap"]');
   await expect(name).toBeVisible();
+  const github = hero.locator('[data-anchor="github"]');
+  const oldGithub = await github.boundingBox();
+  if (!oldGithub) throw Error("Missing peripheral navigation geometry");
   const before = await name.getAttribute("style");
   const box = await name.boundingBox();
   if (!box) throw Error("Missing focal circle");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(
-    box.x + box.width / 2 + 55,
+    box.x + box.width / 2 - 360,
     box.y + box.height / 2 + 20,
     { steps: 8 },
   );
   await page.mouse.up();
   await expect.poll(() => name.getAttribute("style")).not.toBe(before);
+  await expect
+    .poll(async () => (await github.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(oldGithub.width * 1.15);
   await expect(name).toHaveAttribute("aria-pressed", "true");
   await hero.locator('[data-anchor="github"]').click();
   const action = page.getByRole("link", { name: "Open GitHub", exact: true });

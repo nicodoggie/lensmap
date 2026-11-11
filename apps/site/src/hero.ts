@@ -2,7 +2,7 @@ import { limitMagnification } from "../../web/src/clearance";
 import type { GraphData, ViewerState } from "../../web/src/embed";
 import { projectPoint, type Viewport } from "../../web/src/lens";
 
-export const heroStrength = 0.55;
+export const heroStrength = 1.4;
 
 /** The site's narrow composition is a temporary view, not a source edit. */
 export function heroView(
@@ -11,13 +11,15 @@ export function heroView(
 ): { graph: GraphData; state: ViewerState } {
   const portrait: Record<string, { x: number; y: number }> = {
     lensmap: { x: 0, y: 0 },
-    subtitle: { x: 0, y: -390 },
-    "get-started": { x: -220, y: -500 },
-    documentation: { x: -260, y: -250 },
-    examples: { x: 220, y: -500 },
-    links: { x: 0, y: 410 },
-    github: { x: 220, y: 290 },
+    subtitle: { x: 0, y: 550 },
+    "get-started": { x: -650, y: -900 },
+    documentation: { x: 0, y: -550 },
+    examples: { x: 650, y: -900 },
+    links: { x: -650, y: 900 },
+    github: { x: 650, y: 900 },
   };
+  // The narrow ellipse needs a broader shoulder to keep its entry points legible.
+  const strength = size.width < 700 ? 1 : heroStrength;
   const displayed =
     size.width < 700
       ? {
@@ -33,12 +35,12 @@ export function heroView(
   const camera = { x: centre.x, y: centre.y, zoom: 1 };
   const projected = limitMagnification(
     displayed.nodes.map((node) => ({
-      ...projectPoint(node, camera, size, heroStrength),
+      ...projectPoint(node, camera, size, strength),
       baseRadius: node.baseRadius,
       key: node.key,
     })),
     43,
-    heroStrength,
+    strength,
   );
   const point = projected.find((node) => node.key === centre.key);
   if (!point) throw Error("The hero has no focal thought.");
@@ -69,11 +71,11 @@ export function heroView(
     state: {
       selected: centre.key,
       camera,
-      strength: heroStrength,
+      strength,
       overview: false,
       inNeighbourhood: false,
       neighbourhoodCamera: { x: 0, y: 0, zoom: 1 },
-      neighbourhoodStrength: heroStrength,
+      neighbourhoodStrength: strength,
       returnOverview: false,
     },
   };

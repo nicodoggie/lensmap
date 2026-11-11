@@ -6,6 +6,56 @@ import { projectPoint } from "../../web/src/lens";
 import { layoutSemanticGraph } from "../../web/src/semantic-layout";
 import { heroView, siteDestination } from "./hero";
 
+test("spatial focus promotes a navigation thought and lets the wordmark recede", () => {
+  const source = readFileSync(
+    new URL("./maps/hero.lensmap", import.meta.url),
+    "utf8",
+  );
+  const snapshot = new DocumentSession("site:hero.lensmap", source).snapshot();
+  if (!snapshot.graph) throw Error("Missing hero graph");
+  const graph = layoutSemanticGraph(snapshot.graph);
+  for (const size of [
+    { width: 1440, height: 810 },
+    { width: 1024, height: 610 },
+    { width: 390, height: 630 },
+  ]) {
+    const view = heroView(graph, size);
+    const wordmark = view.graph.nodes.find((node) => node.id === "lensmap");
+    const destination = view.graph.nodes.find(
+      (node) => node.id === "documentation",
+    );
+    if (!wordmark || !destination) throw Error("Missing hero navigation");
+    const radii = (focus: typeof wordmark) =>
+      new Map(
+        limitMagnification(
+          view.graph.nodes.map((node) => ({
+            ...projectPoint(
+              node,
+              { x: focus.x, y: focus.y, zoom: 1 },
+              size,
+              view.state.strength,
+            ),
+            baseRadius: node.baseRadius,
+            key: node.key,
+          })),
+          43,
+          view.state.strength,
+        ).map((point) => [point.key, point.scale * (point.baseRadius ?? 43)]),
+      );
+    const before = radii(wordmark);
+    const after = radii(destination);
+    expect(after.get(destination.key)).toBeGreaterThan(
+      2 * (before.get(destination.key) ?? 0),
+    );
+    expect(after.get(wordmark.key)).toBeLessThan(
+      0.6 * (before.get(wordmark.key) ?? 0),
+    );
+    expect(after.get(destination.key)).toBeGreaterThan(
+      1.25 * (after.get(wordmark.key) ?? 0),
+    );
+  }
+});
+
 test("authored hero and example use owning semantics; responsive framing never edits their source graph", () => {
   for (const name of ["hero", "example"]) {
     const source = readFileSync(

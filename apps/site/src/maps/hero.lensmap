@@ -5,16 +5,16 @@ node_styles:
     color: "#14261e"
     border: "2px solid #ecf4df"
     font-family: "Georgia, serif"
-    font-size: "58px"
+    font-size: "48px"
     font-weight: 500
-    --lensmap-scale: 3.25
+    --lensmap-scale: 2.85
   satellite:
     background-color: "#233f3c"
     color: "#e8eee2"
     border: "1px solid #749b88"
-    font-size: "16px"
+    font-size: "24px"
     padding: "8px"
-    --lensmap-scale: 1.65
+    --lensmap-scale: 2.4
   group:
     background-color: "#25423b"
     color: "#dfeacb"
@@ -30,41 +30,41 @@ nodes:
     connections:
       - id: subtitle
         summary: Write thoughts. Explore connections.
-        position: {x: -350, y: 130}
+        position: {x: -700, y: 260}
         style:
           background-color: "#c9b98c"
           color: "#242921"
           border: "1px solid #ded0a4"
           font-family: "Georgia, serif"
-          font-size: "25px"
-          --lensmap-scale: 2.5
+          font-size: "20px"
+          --lensmap-scale: 2.0
         connections:
           - id: get-started
             summary: Get started
             type: external_link
             url: docs/getting-started/
-            position: {x: -210, y: -200}
+            position: {x: -420, y: -400}
             classes: [satellite]
           - id: examples
             summary: Examples
             type: map_link
             url: examples/index.lensmap
-            position: {x: -190, y: 230}
+            position: {x: -380, y: 460}
             classes: [satellite]
           - id: documentation
             summary: Documentation
             type: external_link
             url: docs/
-            position: {x: -410, y: -60}
+            position: {x: -820, y: -120}
             classes: [satellite]
       - id: links
         summary: Links
-        position: {x: 260, y: -200}
+        position: {x: 520, y: -400}
         classes: [group]
         connections:
           - id: github
             summary: GitHub
             type: external_link
             url: https://github.com/nicodoggie/lensmap
-            position: {x: 420, y: -40}
+            position: {x: 840, y: -80}
             classes: [satellite]
