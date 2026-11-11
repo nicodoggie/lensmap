@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { DocumentSession } from "@lensmap/document";
 import { expect, test } from "vitest";
+import { limitMagnification } from "../../web/src/clearance";
+import { projectPoint } from "../../web/src/lens";
 import { layoutSemanticGraph } from "../../web/src/semantic-layout";
 import { heroView, siteDestination } from "./hero";
 
@@ -18,6 +20,7 @@ test("authored hero and example use owning semantics; responsive framing never e
     if (name === "hero") {
       for (const size of [
         { width: 1440, height: 810 },
+        { width: 1024, height: 610 },
         { width: 390, height: 630 },
       ]) {
         const view = heroView(graph, size);
@@ -26,6 +29,32 @@ test("authored hero and example use owning semantics; responsive framing never e
         expect(view.graph.nodes.map((node) => node.key)).toEqual(
           graph.nodes.map((node) => node.key),
         );
+        expect(view.graph.edges).toBe(graph.edges);
+        const { camera, strength } = view.state;
+        const circles = limitMagnification(
+          view.graph.nodes.map((node) => ({
+            ...projectPoint(node, { ...camera, zoom: 1 }, size, strength),
+            baseRadius: node.baseRadius,
+            key: node.key,
+          })),
+          43,
+          strength,
+        ).map((point) => ({
+          x: size.width / 2 + (point.x - size.width / 2) * camera.zoom,
+          y: size.height / 2 + (point.y - size.height / 2) * camera.zoom,
+          radius: (point.baseRadius ?? 43) * point.scale * camera.zoom,
+        }));
+        for (const [index, circle] of circles.entries()) {
+          expect(circle.x - circle.radius).toBeGreaterThanOrEqual(0);
+          expect(circle.y - circle.radius).toBeGreaterThanOrEqual(0);
+          expect(circle.x + circle.radius).toBeLessThanOrEqual(size.width);
+          expect(circle.y + circle.radius).toBeLessThanOrEqual(size.height);
+          for (const other of circles.slice(index + 1)) {
+            expect(
+              Math.hypot(circle.x - other.x, circle.y - other.y),
+            ).toBeGreaterThanOrEqual(circle.radius + other.radius - 1);
+          }
+        }
       }
     } else {
       expect(graph.edges.some((edge) => edge.type === "reveals")).toBe(true);

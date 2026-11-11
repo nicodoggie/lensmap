@@ -12,10 +12,11 @@ export function heroView(
   const portrait: Record<string, { x: number; y: number }> = {
     lensmap: { x: 0, y: 0 },
     subtitle: { x: 0, y: -390 },
-    "get-started": { x: -200, y: 310 },
-    documentation: { x: 0, y: 410 },
-    examples: { x: 200, y: 310 },
-    github: { x: 200, y: -280 },
+    "get-started": { x: -220, y: -500 },
+    documentation: { x: -260, y: -250 },
+    examples: { x: 220, y: -500 },
+    links: { x: 0, y: 410 },
+    github: { x: 220, y: 290 },
   };
   const displayed =
     size.width < 700
@@ -42,9 +43,26 @@ export function heroView(
   const point = projected.find((node) => node.key === centre.key);
   if (!point) throw Error("The hero has no focal thought.");
   const diameter = 2 * (centre.baseRadius ?? 43) * point.scale;
+  // Keep the focal bubble prominent without cropping its authored branches.
+  const extentX = Math.max(
+    ...projected.map(
+      (point) =>
+        Math.abs(point.x - size.width / 2) +
+        (point.baseRadius ?? 43) * point.scale,
+    ),
+  );
+  const extentY = Math.max(
+    ...projected.map(
+      (point) =>
+        Math.abs(point.y - size.height / 2) +
+        (point.baseRadius ?? 43) * point.scale,
+    ),
+  );
   camera.zoom = Math.min(
     2,
     (Math.min(size.width, size.height) * 0.76) / diameter,
+    Math.max(1, size.width / 2 - 16) / extentX,
+    Math.max(1, size.height / 2 - 16) / extentY,
   );
   return {
     graph: displayed,

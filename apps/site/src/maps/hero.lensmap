@@ -12,9 +12,16 @@ node_styles:
     background-color: "#233f3c"
     color: "#e8eee2"
     border: "1px solid #749b88"
-    font-size: "18px"
+    font-size: "16px"
     padding: "8px"
-    --lensmap-scale: 2
+    --lensmap-scale: 1.65
+  group:
+    background-color: "#25423b"
+    color: "#dfeacb"
+    border: "1px solid #8ba591"
+    font-family: "Georgia, serif"
+    font-size: "22px"
+    --lensmap-scale: 1.8
 nodes:
   - id: lensmap
     summary: Lensmap
@@ -23,7 +30,7 @@ nodes:
     connections:
       - id: subtitle
         summary: Write thoughts. Explore connections.
-        position: {x: -370, y: 150}
+        position: {x: -350, y: 130}
         style:
           background-color: "#c9b98c"
           color: "#242921"
@@ -31,27 +38,33 @@ nodes:
           font-family: "Georgia, serif"
           font-size: "25px"
           --lensmap-scale: 2.5
-      - id: get-started
-        summary: Get started
-        type: external_link
-        url: docs/getting-started/
-        position: {x: 400, y: -200}
-        classes: [satellite]
-      - id: documentation
-        summary: Documentation
-        type: external_link
-        url: docs/
-        position: {x: 340, y: 0}
-        classes: [satellite]
-      - id: examples
-        summary: Examples
-        type: external_link
-        url: docs/examples/
-        position: {x: 430, y: 210}
-        classes: [satellite]
-      - id: github
-        summary: GitHub
-        type: external_link
-        url: https://github.com/nicodoggie/lensmap
-        position: {x: -360, y: -200}
-        classes: [satellite]
+        connections:
+          - id: get-started
+            summary: Get started
+            type: external_link
+            url: docs/getting-started/
+            position: {x: -210, y: -200}
+            classes: [satellite]
+          - id: examples
+            summary: Examples
+            type: external_link
+            url: docs/examples/
+            position: {x: -190, y: 230}
+            classes: [satellite]
+          - id: documentation
+            summary: Documentation
+            type: external_link
+            url: docs/
+            position: {x: -410, y: -60}
+            classes: [satellite]
+      - id: links
+        summary: Links
+        position: {x: 260, y: -200}
+        classes: [group]
+        connections:
+          - id: github
+            summary: GitHub
+            type: external_link
+            url: https://github.com/nicodoggie/lensmap
+            position: {x: 420, y: -40}
+            classes: [satellite]
