@@ -4,6 +4,20 @@
 
 See `../HANDOFF.md` for canonical product decisions and schema exploration. Lensmap is text-first exploratory mapping with cycles/convergence, not a shape-drawing app or a world-article navigation graph. TypeScript + pnpm + Turborepo; web app first, reusable embedded viewer second, language server third.
 
+## Hosting compatibility
+
+HTTP-only hosting is a supported target for the core viewer, playground and
+in-memory map navigation, not merely a temporary custom-domain workaround.
+Rendering and navigation identity must not depend on secure-context-only browser
+APIs. Localhost HTTP is treated as secure by browsers, so local preview acceptance
+alone does not prove compatibility with an ordinary HTTP hostname.
+
+HTTPS enforcement on the public Lensmap website is a deployment policy, not a
+requirement imposed on other hosts. Features that genuinely need a secure context
+must detect that capability and explain their own limitation without preventing
+the core map from rendering. This does not bypass browser CORS/mixed-content rules
+or relax the editor bridge's authentication and loopback security boundaries.
+
 ## Current implementation boundary
 
 React + Vite in `apps/web`, with a controlled viewer consumed by the editable YAML playground and a canvas-first live editor bridge. The portable `packages/document` engine owns the explicitly versioned Zod schema, YAML analysis, bindings, session identity and content-edit preparation; viewer layout remains in the web app. `packages/language-server` shares engine sessions between stdio LSP and secured loopback HTTP/SSE. `editors/zed` is the small host launcher, not a GPUI renderer. See [Zed setup and API](zed-browser.md) for the implemented integration and accepted non-atomic write boundary. **`version: v1` is incomplete and experimental**, not a frozen compatibility contract. See `schema-v1.md` for the current subset and validation boundary. Markdown notes and collapsed titles are rendered with react-markdown (raw HTML is not enabled); prose fragments resolve authored node IDs, not renderer keys. Heading slug generation and section ownership remain future work.
