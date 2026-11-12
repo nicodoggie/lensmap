@@ -53,7 +53,7 @@ nodes:
               --lensmap-y: -400;
               @container (width < 700px) {
                 --lensmap-x: -650;
-                --lensmap-y: -900;
+                --lensmap-y: 1050;
               }
             classes: [satellite]
           - id: examples
@@ -65,7 +65,7 @@ nodes:
               --lensmap-y: 460;
               @container (width < 700px) {
                 --lensmap-x: 650;
-                --lensmap-y: -900;
+                --lensmap-y: 1050;
               }
             classes: [satellite]
           - id: documentation
@@ -77,7 +77,7 @@ nodes:
               --lensmap-y: -120;
               @container (width < 700px) {
                 --lensmap-x: 0;
-                --lensmap-y: -550;
+                --lensmap-y: 1300;
               }
             classes: [satellite]
       - id: links
@@ -86,8 +86,8 @@ nodes:
           --lensmap-x: 520;
           --lensmap-y: -400;
           @container (width < 700px) {
-            --lensmap-x: -650;
-            --lensmap-y: 900;
+            --lensmap-x: -500;
+            --lensmap-y: -800;
           }
         classes: [group]
         connections:
@@ -99,7 +99,7 @@ nodes:
               --lensmap-x: 840;
               --lensmap-y: -80;
               @container (width < 700px) {
-                --lensmap-x: 650;
-                --lensmap-y: 900;
+                --lensmap-x: 500;
+                --lensmap-y: -800;
               }
             classes: [satellite]

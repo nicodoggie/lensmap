@@ -64,6 +64,29 @@ test("spatial focus promotes a navigation thought and lets the wordmark recede",
   }
 });
 
+test("narrow hero keeps Links above and subtitle destinations below their parent", () => {
+  const source = readFileSync(
+    new URL("./maps/hero.lensmap", import.meta.url),
+    "utf8",
+  );
+  const snapshot = new DocumentSession("site:hero.lensmap", source).snapshot();
+  if (!snapshot.valid || !snapshot.graph) throw Error("Missing valid hero");
+  const graph = resolveGraphPresentation(
+    layoutSemanticGraph(snapshot.graph),
+    (c) => c.kind === "container",
+  );
+  const node = (id: string) => {
+    const found = graph.nodes.find((n) => n.id === id);
+    if (!found) throw Error(`Missing hero thought ${id}`);
+    return found;
+  };
+  for (const id of ["links", "github"])
+    expect(node(id).y).toBeLessThan(node("lensmap").y);
+  expect(node("subtitle").y).toBeGreaterThan(node("lensmap").y);
+  for (const id of ["get-started", "documentation", "examples"])
+    expect(node(id).y).toBeGreaterThan(node("subtitle").y);
+});
+
 test("authored hero and example use owning semantics; responsive framing never edits their source graph", () => {
   for (const name of ["hero", "example"]) {
     const source = readFileSync(

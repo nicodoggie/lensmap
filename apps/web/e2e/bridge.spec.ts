@@ -3,12 +3,14 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import type { Thought } from "@lensmap/document";
 import { expect, type Page, test } from "@playwright/test";
 import {
   createMessageConnection,
   StreamMessageReader,
   StreamMessageWriter,
 } from "vscode-languageserver/node";
+import { parseDocument } from "yaml";
 
 test.use({ trace: "off" }); // Per-run authorization must not enter retained traces.
 const original = `version: v1
@@ -181,9 +183,11 @@ test("authored hero conditions survive the LSP and live position edits preserve 
     const nameKey = snapshot.graph.nodes.find(
       (node: { id: string }) => node.id === "lensmap",
     ).key;
-    const docKey = snapshot.graph.nodes.find(
-      (node: { id: string }) => node.id === "documentation",
-    ).key;
+    const documentation: Thought | undefined = snapshot.graph.nodes.find(
+      (node: Thought) => node.id === "documentation",
+    );
+    if (!documentation) throw Error("Missing authored Documentation thought");
+    const docKey = documentation.key;
     const name = page.locator(`[data-node="${nameKey}"]`);
     const docs = page.locator(`[data-node="${docKey}"]`);
     const centre = async (node: ReturnType<Page["locator"]>) => {
@@ -205,12 +209,36 @@ test("authored hero conditions survive the LSP and live position edits preserve 
     const zoom = await page
       .getByLabel("Zoom level", { exact: true })
       .textContent();
-    const edited = hero.replace("--lensmap-y: -550;", "--lensmap-y: -350;");
+    const rule = documentation.style?.rules?.find(
+      (rule) =>
+        rule.property === "--lensmap-y" &&
+        rule.conditions?.some((c) => c.kind === "container"),
+    );
+    if (!rule?.conditions)
+      throw Error("Missing authored responsive coordinate");
+    const source = parseDocument(hero);
+    const stylePath = [
+      ...documentation.path
+        .split(".")
+        .map((part) => (/^\d+$/.test(part) ? Number(part) : part)),
+      "style",
+    ];
+    const currentStyle = source.getIn(stylePath);
+    if (typeof currentStyle !== "string")
+      throw Error("Expected authored CSS string");
+    // Edit the owning thought through YAML, without pinning this transport test
+    // to a particular mobile coordinate or which side of the centre it uses.
+    const override = rule.conditions.reduceRight(
+      (text, condition) => `@${condition.kind} ${condition.query} { ${text} }`,
+      `--lensmap-y: ${Number(rule.value) * 0.65};`,
+    );
+    source.setIn(stylePath, `${currentStyle}\n${override}\n`);
+    const edited = source.toString();
     await f.change(edited);
     await expect(page.getByTestId("bridge-status")).toContainText("r2");
     await expect
-      .poll(async () => (await centre(docs)).y)
-      .toBeGreaterThan(beforeDocs.y + 1);
+      .poll(async () => Math.abs((await centre(docs)).y - beforeName.y))
+      .toBeLessThan(Math.abs(beforeDocs.y - beforeName.y) - 1);
     const afterName = await centre(name);
     expect(afterName.x).toBeCloseTo(beforeName.x, 3);
     expect(afterName.y).toBeCloseTo(beforeName.y, 3);
@@ -219,12 +247,11 @@ test("authored hero conditions survive the LSP and live position edits preserve 
     ).toBe(zoom);
     await expect(name).toHaveAttribute("aria-pressed", "true");
     const retained = (await f.snapshot()).graph;
-    await f.change(
-      edited.replace(
-        "--lensmap-scale: 2.0;",
-        "--lensmap-scale: 2.0;\n          @media print { width: 2px; }",
-      ),
+    source.setIn(
+      stylePath,
+      `${currentStyle}\n${override}\n@media print { width: 2px; }\n`,
     );
+    await f.change(source.toString());
     await expect(page.getByTestId("bridge-status")).toContainText("stale");
     // The diagnostic banner moves the canvas on the page. Retain the actual
     // graph and view rather than freezing document-level pixel coordinates.

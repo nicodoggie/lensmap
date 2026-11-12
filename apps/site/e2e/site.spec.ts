@@ -96,6 +96,17 @@ test("narrow initial framing is legible, exploration works and resizing does not
     .toBe(true);
   const name = await hero.locator('[data-anchor="lensmap"]').boundingBox();
   expect(name?.width).toBeGreaterThan(240);
+  if (!name) throw Error("Missing mobile wordmark");
+  for (const id of ["links", "github"]) {
+    const box = await hero.locator(`[data-anchor="${id}"]`).boundingBox();
+    if (!box) throw Error(`Missing upper mobile thought ${id}`);
+    expect(box.y + box.height / 2).toBeLessThan(name.y);
+  }
+  for (const id of ["subtitle", "get-started", "documentation", "examples"]) {
+    const box = await hero.locator(`[data-anchor="${id}"]`).boundingBox();
+    if (!box) throw Error(`Missing lower mobile thought ${id}`);
+    expect(box.y).toBeGreaterThanOrEqual(name.y + name.height);
+  }
   expect(
     await hero
       .locator(".node-summary")
