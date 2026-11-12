@@ -1,7 +1,7 @@
 import type { SemanticGraph } from "@lensmap/document";
 import { layoutGraph, type NodeDraft } from "./document/layout";
 import type { Branch, GraphData } from "./graph";
-import { baseRadius } from "./node-style";
+import { baseRadius, positionAxis } from "./node-style";
 
 interface PreviousLayout {
   semantic: SemanticGraph;
@@ -12,7 +12,8 @@ const layoutKey = (graph: SemanticGraph) =>
   JSON.stringify({
     nodes: graph.nodes.map((node) => [
       node.key,
-      node.position,
+      positionAxis(node, "x"),
+      positionAxis(node, "y"),
       baseRadius(node.style),
     ]),
     edges: graph.edges.map((edge) => [edge.key, edge.from, edge.to, edge.kind]),

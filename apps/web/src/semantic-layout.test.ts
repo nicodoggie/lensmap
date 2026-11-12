@@ -73,6 +73,30 @@ it("retains portal and relationship metadata without relayout on metadata-only e
   expect(second.edges[0]).toMatchObject({ type: "prevents", kind: "branch" });
 });
 
+it("invalidates placement for CSS coordinates, retaining paint-only placement", () => {
+  const first = layoutSemanticGraph(graph);
+  const positioned = structuredClone(graph);
+  positioned.nodes[1].style = { declarations: [], x: 800, y: 400 };
+  const second = layoutSemanticGraph(positioned, {
+    semantic: graph,
+    layout: first,
+  });
+  expect(second.nodes[1]).toMatchObject({ x: 800, y: 400 });
+  const painted = structuredClone(positioned);
+  painted.nodes[1].style?.declarations.push({
+    property: "color",
+    value: "red",
+    important: false,
+  });
+  const third = layoutSemanticGraph(painted, {
+    semantic: positioned,
+    layout: second,
+  });
+  expect(third.nodes.map(({ x, y }) => ({ x, y }))).toEqual(
+    second.nodes.map(({ x, y }) => ({ x, y })),
+  );
+});
+
 it("projects presentation-only changes without moving centres", () => {
   const first = layoutSemanticGraph(graph);
   const presentation = {

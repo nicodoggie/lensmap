@@ -18,6 +18,7 @@
       "outputs": ["dist/**"]
     },
     "typecheck": { "dependsOn": ["^build", "^typecheck"], "outputs": [] },
+    "@lensmap/starlight#test": { "dependsOn": ["build"], "outputs": [] },
     "test": { "dependsOn": ["^build"], "outputs": [] }
   }
 }

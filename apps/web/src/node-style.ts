@@ -1,4 +1,14 @@
 import type { Thought } from "@lensmap/document";
+import type { GraphNode } from "./graph";
+
+/** An explicit CSS auto releases a legacy pin; omission retains its fallback. */
+export function positionAxis(
+  node: Pick<GraphNode, "position" | "style">,
+  axis: "x" | "y",
+): number | undefined {
+  const value = node.style?.[axis];
+  return value === "auto" ? undefined : (value ?? node.position?.[axis]);
+}
 
 export function baseRadius(style?: Thought["style"]): number {
   return 43 * (typeof style?.scale === "number" ? style.scale : 1);

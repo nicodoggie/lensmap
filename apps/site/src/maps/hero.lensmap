@@ -26,45 +26,80 @@ nodes:
   - id: lensmap
     summary: Lensmap
     classes: [wordmark]
-    position: {x: 0, y: 0}
+    style: {--lensmap-x: 0, --lensmap-y: 0}
     connections:
       - id: subtitle
         summary: Write thoughts. Explore connections.
-        position: {x: -700, y: 260}
-        style:
-          background-color: "#c9b98c"
-          color: "#242921"
-          border: "1px solid #ded0a4"
-          font-family: "Georgia, serif"
-          font-size: "20px"
-          --lensmap-scale: 2.0
+        style: |
+          background-color: #c9b98c;
+          color: #242921;
+          border: 1px solid #ded0a4;
+          font-family: Georgia, serif;
+          font-size: 20px;
+          --lensmap-scale: 2.0;
+          --lensmap-x: -700;
+          --lensmap-y: 260;
+          @container (width < 700px) {
+            --lensmap-x: 0;
+            --lensmap-y: 550;
+          }
         connections:
           - id: get-started
             summary: Get started
             type: external_link
             url: docs/getting-started/
-            position: {x: -420, y: -400}
+            style: |
+              --lensmap-x: -420;
+              --lensmap-y: -400;
+              @container (width < 700px) {
+                --lensmap-x: -650;
+                --lensmap-y: -900;
+              }
             classes: [satellite]
           - id: examples
             summary: Examples
             type: map_link
             url: examples/index.lensmap
-            position: {x: -380, y: 460}
+            style: |
+              --lensmap-x: -380;
+              --lensmap-y: 460;
+              @container (width < 700px) {
+                --lensmap-x: 650;
+                --lensmap-y: -900;
+              }
             classes: [satellite]
           - id: documentation
             summary: Documentation
             type: external_link
             url: docs/
-            position: {x: -820, y: -120}
+            style: |
+              --lensmap-x: -820;
+              --lensmap-y: -120;
+              @container (width < 700px) {
+                --lensmap-x: 0;
+                --lensmap-y: -550;
+              }
             classes: [satellite]
       - id: links
         summary: Links
-        position: {x: 520, y: -400}
+        style: |
+          --lensmap-x: 520;
+          --lensmap-y: -400;
+          @container (width < 700px) {
+            --lensmap-x: -650;
+            --lensmap-y: 900;
+          }
         classes: [group]
         connections:
           - id: github
             summary: GitHub
             type: external_link
             url: https://github.com/nicodoggie/lensmap
-            position: {x: 840, y: -80}
+            style: |
+              --lensmap-x: 840;
+              --lensmap-y: -80;
+              @container (width < 700px) {
+                --lensmap-x: 650;
+                --lensmap-y: 900;
+              }
             classes: [satellite]

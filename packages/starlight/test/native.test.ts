@@ -195,6 +195,7 @@ test("native Starlight static reading and one-session responsive inspector", asy
       fullPage: true,
     });
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(styled).toHaveCSS("color", "rgb(181, 230, 210)");
     const disclosure = page.locator("[data-lensmap-thoughts]");
     await expect(disclosure).not.toHaveAttribute("open", "");
     await expect(inspector).toHaveCount(0);

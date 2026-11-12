@@ -22,7 +22,7 @@ import StyledConnection from "./ConnectionGap";
 import { limitMagnification } from "./clearance";
 import { fallbackPresentation } from "./connection-appearance";
 import { markerClearance, resolveConnectionWidth } from "./connection-style";
-import { layoutGraph } from "./document/layout";
+
 import { edgeLanes } from "./edge-routing";
 import { colours, type GraphData, type GraphNode, label } from "./graph";
 import {
@@ -41,9 +41,15 @@ import {
   stepConnectionChoice,
 } from "./navigation";
 import { neighbourhood } from "./neighbourhood";
-import { applyNodeStyle, baseRadius } from "./node-style";
+import { applyNodeStyle } from "./node-style";
+import {
+  conditionKey,
+  type PreviousPresentation,
+  resolveGraphPresentation,
+} from "./responsive-style";
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import { useMapKeyboard } from "./useMapKeyboard";
+import { useNodeStyleMatches } from "./useNodeStyleMatches";
 import ViewerInspector from "./ViewerInspector";
 import { reconcileViewer } from "./viewer-state";
 
@@ -104,31 +110,33 @@ export default function Viewer({
   renderSidebar,
   renderExternalInspector,
 }: ViewerProps) {
+  const canvas = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 900, height: 640 });
+  const { matches, ready: presentationReady } = useNodeStyleMatches(
+    inputGraph,
+    canvas,
+    size,
+  );
   const [measured, setMeasured] = useState<ReadonlyMap<string, number>>(
     new Map(),
   );
+  const previousPresentation = useRef<PreviousPresentation>(null);
   const graph = useMemo(() => {
-    const nodes = inputGraph.nodes.map((node) => ({
-      ...node,
-      baseRadius:
-        (node.style?.scale === "auto" ? measured.get(node.key) : undefined) ??
-        baseRadius(node.style),
-    }));
-    if (
-      !nodes.some(
-        (node, i) => node.baseRadius !== (inputGraph.nodes[i].baseRadius ?? 43),
-      )
-    )
-      return inputGraph;
-    return layoutGraph(nodes, inputGraph.edges);
-  }, [inputGraph, measured]);
+    const resolved = resolveGraphPresentation(
+      inputGraph,
+      (condition) => matches.get(conditionKey(condition)) ?? false,
+      measured,
+      previousPresentation.current ?? undefined,
+    );
+    previousPresentation.current = { input: inputGraph, graph: resolved };
+    return resolved;
+  }, [inputGraph, measured, matches]);
   const scope = useId();
   const anchors = useMemo(() => thoughtAnchors(graph.nodes), [graph.nodes]);
   const entryNode = graph.nodes.find((n) => n.key === initialTarget);
   const restoredNode = graph.nodes.find(
     (n) => n.key === initialState?.selected,
   );
-  const canvas = useRef<HTMLDivElement>(null);
   const scene = useRef<HTMLDivElement>(null);
   const pendingActivation = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doubleCandidate = useRef<string | null>(null);
@@ -148,7 +156,6 @@ export default function Viewer({
     active: boolean;
   } | null>(null);
   const suppressPointerClick = useRef(false);
-  const [size, setSize] = useState({ width: 900, height: 640 });
   const [widths, setWidths] = useState<ReadonlyMap<string, number>>(new Map());
   useLayoutEffect(() => {
     const root = canvas.current;
@@ -282,8 +289,7 @@ export default function Viewer({
         .querySelectorAll<HTMLElement>(".node[data-auto-size='true']")
         .forEach((element) => {
           const key = element.dataset.node;
-          if (!key || !inputGraph.nodes.some((node) => node.key === key))
-            return;
+          if (!key || !graph.nodes.some((node) => node.key === key)) return;
           const clone = element.cloneNode(true) as HTMLElement;
           clone.removeAttribute("id");
           clone.classList.remove("selected", "connected");
@@ -309,7 +315,7 @@ export default function Viewer({
         });
       setMeasured((previous) => {
         const next = new Map<string, number>();
-        for (const node of inputGraph.nodes) {
+        for (const node of graph.nodes) {
           if (node.style?.scale !== "auto") continue;
           const radius = visible.get(node.key) ?? previous.get(node.key);
           if (radius !== undefined) next.set(node.key, radius);
@@ -322,11 +328,15 @@ export default function Viewer({
     measure();
     void document.fonts.ready.then(measure);
     document.fonts.addEventListener("loadingdone", measure);
+    // vw/vh typography can change while every condition remains matched and
+    // the embedded canvas keeps its size. Only changed radii invalidate layout.
+    window.addEventListener("resize", measure);
     return () => {
       alive = false;
       document.fonts.removeEventListener("loadingdone", measure);
+      window.removeEventListener("resize", measure);
     };
-  }, [inputGraph, measurementView]);
+  }, [graph, measurementView, size.width, size.height]);
 
   useEffect(() => cancelActivation, [cancelActivation]);
 
@@ -628,6 +638,7 @@ export default function Viewer({
   }
 
   const previousGraph = useRef(graph);
+  const previousInput = useRef(inputGraph);
   const lastRequest = useRef<{ key: string; sequence: number } | undefined>(
     undefined,
   );
@@ -641,9 +652,10 @@ export default function Viewer({
       graph,
       selected,
       camera,
-      updateMode,
+      previousInput.current === inputGraph ? "live" : updateMode,
     );
     previousGraph.current = graph;
+    previousInput.current = inputGraph;
     cancelActivation();
     keyboard.stop();
     stopDrag();
@@ -665,6 +677,20 @@ export default function Viewer({
     )
       canvas.current?.focus({ preventScroll: true });
   });
+
+  const initializedPresentation = useRef(false);
+  useLayoutEffect(() => {
+    if (!presentationReady || initializedPresentation.current) return;
+    initializedPresentation.current = true;
+    // Initial targeted navigation follows the first resolved geometry only.
+    // Later responsive changes must not move the user's camera.
+    if (entryNode && !initialState)
+      setCamera((current) =>
+        current.x === entryNode.x && current.y === entryNode.y
+          ? current
+          : { ...current, x: entryNode.x, y: entryNode.y },
+      );
+  }, [presentationReady, entryNode, initialState]);
 
   const receiveFocus = useEffectEvent(() => {
     if (

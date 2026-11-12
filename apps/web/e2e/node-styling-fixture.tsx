@@ -1,11 +1,100 @@
+import { DocumentSession } from "@lensmap/document";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import type { GraphData } from "../src/graph";
+import { layoutSemanticGraph } from "../src/semantic-layout";
 import Viewer, { type ViewerState } from "../src/Viewer";
 
 let repaint = () => {};
 export function restyle() {
   repaint();
+}
+
+let responsiveState: ViewerState | undefined;
+let responsiveSource = "";
+export function getResponsiveState() {
+  return responsiveState;
+}
+export function getResponsiveSource() {
+  return responsiveSource;
+}
+export function setResponsiveWidth(width: number) {
+  const root = document.getElementById("responsive-root");
+  if (root) root.style.width = `${width}px`;
+}
+export function mountResponsive(targeted = false, fluidTypography = false) {
+  document.body.innerHTML =
+    '<div id="responsive-root" style="max-width:100%;margin:auto"></div>';
+  const element = document.getElementById("responsive-root");
+  if (!element) throw Error("Missing responsive root");
+  element.style.width = targeted ? "390px" : "900px";
+  responsiveSource = `version: v1
+nodes:
+  - id: root
+    summary: Root
+    position: {x: 0, y: 0}
+    connections:
+      - id: adaptive
+        summary: A responsive thought with readable text
+        style: |
+          --lensmap-x: 320;
+          --lensmap-y: 0;
+          --lensmap-scale: auto;
+          font-size: 18px;
+          padding: 8px;
+          border: 2px solid blue;
+          background-color: white;
+          color: black;
+          @container (max-width: 700px) {
+            --lensmap-x: 0;
+            --lensmap-y: 260;
+            font-size: 24px;
+            padding: 12px;
+          }
+          @media (width < 700px) { border-color: red; }
+          @media (prefers-color-scheme: dark) { background-color: orange; }
+`;
+  if (fluidTypography) {
+    responsiveSource = responsiveSource.replace(
+      "A responsive thought with readable text",
+      "Fluid viewport text",
+    );
+    responsiveSource +=
+      "          @media (width > 700px) { font-size: 4vw; }\n";
+  }
+  const session = new DocumentSession(
+    "fixture:responsive.lensmap",
+    responsiveSource,
+  );
+  const snapshot = session.snapshot();
+  if (!snapshot.valid || !snapshot.graph)
+    throw Error(JSON.stringify(snapshot.diagnostics));
+  const graph = layoutSemanticGraph(snapshot.graph);
+  const root = createRoot(element);
+  root.render(
+    <Viewer
+      graph={graph}
+      showInspector={false}
+      initialTarget={targeted ? graph.nodes[1].key : undefined}
+      initialState={
+        targeted
+          ? undefined
+          : {
+              selected: graph.nodes[0].key,
+              camera: { x: 0, y: 0, zoom: 0.55 },
+              strength: 0,
+              overview: false,
+              inNeighbourhood: false,
+              neighbourhoodCamera: { x: 0, y: 0, zoom: 1 },
+              neighbourhoodStrength: 0,
+              returnOverview: false,
+            }
+      }
+      onStateChange={(state) => {
+        responsiveState = state;
+      }}
+    />,
+  );
 }
 export function mount(restoredNeighbourhood = false) {
   document.body.innerHTML = '<div id="styling-root"></div>';

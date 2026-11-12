@@ -4,32 +4,14 @@ import { projectPoint, type Viewport } from "../../web/src/lens";
 
 export const heroStrength = 1.4;
 
-/** The site's narrow composition is a temporary view, not a source edit. */
+/** Site view policy only; node layout is resolved from authored presentation. */
 export function heroView(
   graph: GraphData,
   size: Viewport,
 ): { graph: GraphData; state: ViewerState } {
-  const portrait: Record<string, { x: number; y: number }> = {
-    lensmap: { x: 0, y: 0 },
-    subtitle: { x: 0, y: 550 },
-    "get-started": { x: -650, y: -900 },
-    documentation: { x: 0, y: -550 },
-    examples: { x: 650, y: -900 },
-    links: { x: -650, y: 900 },
-    github: { x: 650, y: 900 },
-  };
   // The narrow ellipse needs a broader shoulder to keep its entry points legible.
   const strength = size.width < 700 ? 1 : heroStrength;
-  const displayed =
-    size.width < 700
-      ? {
-          ...graph,
-          nodes: graph.nodes.map((node) => {
-            const position = portrait[node.id ?? ""];
-            return position ? { ...node, ...position, position } : node;
-          }),
-        }
-      : graph;
+  const displayed = graph;
   const centre =
     displayed.nodes.find((node) => node.id === "lensmap") ?? displayed.nodes[0];
   const camera = { x: centre.x, y: centre.y, zoom: 1 };

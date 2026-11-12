@@ -3,6 +3,7 @@ import { DocumentSession } from "@lensmap/document";
 import { expect, test } from "vitest";
 import { limitMagnification } from "../../web/src/clearance";
 import { projectPoint } from "../../web/src/lens";
+import { resolveGraphPresentation } from "../../web/src/responsive-style";
 import { layoutSemanticGraph } from "../../web/src/semantic-layout";
 import { heroView, siteDestination } from "./hero";
 
@@ -19,7 +20,14 @@ test("spatial focus promotes a navigation thought and lets the wordmark recede",
     { width: 1024, height: 610 },
     { width: 390, height: 630 },
   ]) {
-    const view = heroView(graph, size);
+    const resolved = resolveGraphPresentation(
+      graph,
+      (condition) =>
+        condition.kind === "container" &&
+        condition.query === "(width < 700px)" &&
+        size.width < 700,
+    );
+    const view = heroView(resolved, size);
     const wordmark = view.graph.nodes.find((node) => node.id === "lensmap");
     const destination = view.graph.nodes.find(
       (node) => node.id === "documentation",
@@ -73,7 +81,14 @@ test("authored hero and example use owning semantics; responsive framing never e
         { width: 1024, height: 610 },
         { width: 390, height: 630 },
       ]) {
-        const view = heroView(graph, size);
+        const resolved = resolveGraphPresentation(
+          graph,
+          (condition) =>
+            condition.kind === "container" &&
+            condition.query === "(width < 700px)" &&
+            size.width < 700,
+        );
+        const view = heroView(resolved, size);
         expect(view.state.overview).toBe(false);
         expect(view.state.camera.zoom).toBeGreaterThan(0);
         expect(view.graph.nodes.map((node) => node.key)).toEqual(

@@ -1,7 +1,7 @@
 ---
 
 title: Style thought bubbles
-description: Reusable classes, inline CSS and content-fitting circles.
+description: Reusable classes, content-fitting circles and responsive layouts.
 sidebar:
   order: 5
 ---
@@ -50,11 +50,44 @@ around its rendered summary at the normal font size; it does not shrink the
 text. Expanded prose does not determine that summary's size. Base sizing remains
 separate from spatial lens magnification and camera zoom.
 
+## Position and adapt a thought
+
+```yaml
+version: v1
+nodes:
+  - summary: Documentation
+    style: |
+      --lensmap-x: 320;
+      --lensmap-y: 0;
+      @container (width < 700px) {
+        --lensmap-x: 0;
+        --lensmap-y: 260;
+        font-size: 24px;
+      }
+      @media (prefers-color-scheme: dark) { color: #e8eee2; }
+```
+
+Coordinates are unitless map-world coordinates, before lens deformation and zoom,
+not CSS pixel offsets. CSS coordinates override the corresponding `position`
+axis; omission keeps its fallback, and explicit `auto` releases an axis to
+automatic layout.
+
+`@container` measures this map's canvas, including a narrow map inside a wide
+page. `@media` uses normal browser viewport/preferences. Nest either block in an
+inline CSS string or named class; conditional nesting combines its requirements
+without changing cascade specificity. Use CSS strings for conditional rules, not
+special YAML media keys. Invalid inactive branches still produce diagnostics.
+
+The site and editor preview use the same shared resolver. Camera and selection
+survive responsive changes; panning and zooming do not change rule matching.
+
 ## A deliberately limited CSS profile
 
 The initial subset includes foreground/background colours, host-available font
 families and text properties, borders, padding, `--lensmap-scale` and decorative
-`--lensmap-icon`. Numeric CSS values do not automatically become pixel lengths.
+`--lensmap-icon`, plus the coordinate properties above. Numeric CSS values do not
+automatically become pixel lengths. Container queries are unnamed size queries;
+named host containers and style/scroll-state queries are not supported.
 
 Unknown properties, external resources, unresolved variables, CSS-wide reset
 keywords and unsupported constructs produce diagnostics. Maps cannot inject a

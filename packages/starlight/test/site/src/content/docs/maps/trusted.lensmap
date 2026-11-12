@@ -26,6 +26,8 @@ nodes:
         id: short
         summary: Short thought
         classes: [highlight]
+        style: |
+          @media (width < 700px) { color: #b5e6d2; }
         full_text: |
           # Short thought
 

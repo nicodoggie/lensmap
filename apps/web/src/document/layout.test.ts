@@ -120,6 +120,39 @@ nodes:
     ).toHaveLength(2);
   });
 
+  it("resolves CSS coordinate axes before layout and releases legacy pins with auto", () => {
+    const document = (position?: { x: number; y: number }) =>
+      JSON.stringify({
+        version: "v1",
+        nodes: [
+          {
+            id: "root",
+            summary: "Root",
+            position: { x: 0, y: 0 },
+            connections: [
+              {
+                id: "child",
+                summary: "Child",
+                position,
+                style: { "--lensmap-x": 900, "--lensmap-y": "auto" },
+              },
+            ],
+          },
+        ],
+      });
+    const automatic = node(parse(document()), "child");
+    const released = node(parse(document({ x: 1200, y: 500 })), "child");
+    expect(released).toMatchObject({ x: 900, y: automatic.y });
+    expect(released.y).not.toBe(500);
+    const fallback = parse(
+      document({ x: 1200, y: 500 }).replace(
+        '"--lensmap-x":900,"--lensmap-y":"auto"',
+        '"--lensmap-y":-300',
+      ),
+    );
+    expect(node(fallback, "child")).toMatchObject({ x: 1200, y: -300 });
+  });
+
   it("gives a broad subtree more angular room than an equally populous narrow chain", () => {
     const graph = parse(
       JSON.stringify({

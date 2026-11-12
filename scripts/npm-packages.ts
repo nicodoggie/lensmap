@@ -91,7 +91,7 @@ if (values.test) {
       probe,
       `import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DocumentSession, DocumentSchema } from '@lensmap/document';
+import { DocumentSession, DocumentSchema, resolveNodePresentation, type NodeStyleCondition } from '@lensmap/document';
 import { DocumentSchema as v1 } from '@lensmap/document/v1';
 import { readProjectVocabulary } from '@lensmap/document/project';
 import { startServer } from '@lensmap/language-server';
@@ -116,6 +116,11 @@ assert.equal(typeof startServer, 'function');
 const snapshot = new DocumentSession('file:///consumer.lensmap', 'version: v1\\nnodes: [Installed]\\n', 1, (await readProjectVocabulary('.')).input).snapshot();
 assert.ok(snapshot.graph);
 assert.equal(snapshot.graph.nodes[0].title, 'Installed');
+const responsive = new DocumentSession('file:///responsive.lensmap', JSON.stringify({version:'v1', nodes:[{summary:'Responsive', style:'@container (width < 700px) { --lensmap-x: 42; }'}]})).snapshot();
+assert.equal(responsive.valid, true);
+const rules = responsive.graph?.nodes[0].style?.rules;
+assert.ok(rules);
+assert.equal(resolveNodePresentation(rules, (condition: NodeStyleCondition) => condition.kind === 'container')?.x, 42);
 `,
     );
     run(

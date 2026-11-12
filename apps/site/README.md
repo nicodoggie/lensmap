@@ -45,7 +45,8 @@ analysis cannot see template references; Astro's native checker owns the templat
 
 ## Source and presentation
 
-- `src/maps/hero.lensmap` owns thought copy, destinations, styles and desktop pins.
+- `src/maps/hero.lensmap` owns thought copy, destinations, styles and responsive
+  coordinates. Its CSS `@container` rules define the narrow arrangement.
 - `src/components/MapSession.tsx` adapts the existing navigation controller to the
   site, retaining map views and distinct browser visit identities. Only the home
   state gets marketing chrome; examples expose the normal viewer and inspector.
@@ -53,22 +54,23 @@ analysis cannot see template references; Astro's native checker owns the templat
   existing sample source, and `src/pages/[...map].lensmap.ts` validates and emits
   raw documents through native Astro static endpoints. No runtime compiler or
   custom filesystem-serving endpoint is involved.
-- `src/hero.ts` initializes a measured site-owned view; its narrow composition
-  does not edit the authored source. Subsequent resize preserves exploration.
+- `src/hero.ts` initializes the site's camera/lens policy, without an ID/coordinate
+  override table. `HeroMap` frames shared resolved presentation initially;
+  subsequent condition changes use the normal viewer and preserve exploration.
 - `src/pages/index.astro` provides metadata and a no-JavaScript fallback.
 - `src/content/docs/docs/` contains conventional Starlight Markdown/MDX pages.
 - `src/components/MapExample.astro` analyzes one source and passes that same source
   to Starlight's copyable code component. `src/maps/example.lensmap` is the live
   demonstration, not a separately maintained diagram.
-- Hero overrides are site-scoped. Other viewer consumers and npm packages are
-  unchanged.
+- Hero view policy is site-scoped. Responsive authored presentation is shared
+  with ordinary viewers and the LSP preview; it is not a site-only renderer.
 
 The hero demonstrates spatial focus rather than a fixed wordmark hierarchy:
 moving a navigation thought into the centre enlarges it while the old centre
 recedes. Its stronger site-owned lens and wider authored spacing use the normal
 shared projection/clearance, not a second renderer. Narrow screens use a broader
-lens shoulder and their own initial constellation so the Documentation entry
-remains visible. Camera framing keeps the initial bubbles in view; exploration
+lens shoulder and an authored container-query constellation so the Documentation
+entry remains visible. Camera framing keeps the initial bubbles in view; exploration
 can move peripheral context offscreen. There is no automatic camera tour, and
 resizing does not reset an explored view. The site tests exercise both pointer
 panning and desktop/narrow focus changes, not only the initial screenshot.

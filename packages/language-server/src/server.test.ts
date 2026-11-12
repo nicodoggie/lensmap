@@ -32,7 +32,7 @@ it("transports node styles through live analysis and retains last-valid styling"
   await f.open();
   const text = `version: v1
 node_styles:
-  highlighted: "color: red; --lensmap-scale: auto"
+  highlighted: "color: red; --lensmap-scale: auto; @container (width < 700px) { --lensmap-x: 80; } @media print { color: purple; }"
 nodes:
   - id: alpha
     summary: Alpha
@@ -50,6 +50,19 @@ nodes:
       (d: { value: string }) => d.value,
     ),
   ).toEqual(["red", "blue"]);
+  expect(first.graph.nodes[0].style.x).toBeUndefined();
+  expect(first.graph.nodes[0].style.rules).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        property: "--lensmap-x",
+        conditions: [{ kind: "container", query: "(width < 700px)" }],
+      }),
+      expect.objectContaining({
+        property: "color",
+        conditions: [{ kind: "media", query: "print" }],
+      }),
+    ]),
+  );
   const key = first.graph.nodes[0].key;
   const invalidText = text.replace("color: blue", "color: url(unsafe)");
   const invalid = await f.change(invalidText, 3);
@@ -84,6 +97,17 @@ nodes:
   await expect
     .poll(() => diagnostics.filter((item) => item.uri === uri).at(-1))
     .toMatchObject({ uri, version: 4, diagnostics: [] });
+  const badBranch = text.replace("--lensmap-x: 80", "width: 80px");
+  const inactive = await f.change(badBranch, 5);
+  expect(inactive.valid).toBe(false);
+  expect(inactive.graph).toEqual(recovered.graph);
+  const branchRange = inactive.diagnostics[0].range;
+  expect(
+    badBranch.slice(
+      positionToOffset(badBranch, branchRange.start),
+      positionToOffset(badBranch, branchRange.end),
+    ),
+  ).toBe("width: 80px");
 });
 
 async function fixture(showDocument = false, projectRoot?: string) {

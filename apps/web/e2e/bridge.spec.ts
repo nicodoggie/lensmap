@@ -21,13 +21,13 @@ nodes:
     summary: Beta
     position: {x: 240, y: 120}
 `;
-async function editor() {
+async function editor(initial = original) {
   const web = fileURLToPath(new URL("..", import.meta.url));
   const scratch = await mkdtemp(join(tmpdir(), "lensmap-browser-"));
   const file = join(scratch, "notes.lensmap");
   const log = join(scratch, "reveal.jsonl");
   const opener = join(scratch, "synthetic-host");
-  await writeFile(file, original);
+  await writeFile(file, initial);
   await writeFile(
     opener,
     "#!/usr/bin/env node\nrequire('node:fs').appendFileSync(process.env.LENSMAP_REVEAL_LOG, JSON.stringify(process.argv.slice(2))+'\\n');\n",
@@ -40,8 +40,11 @@ async function editor() {
         resolve(web, "../../packages/language-server/dist/main.js"),
       "--stdio",
       "--no-open",
-      "--assets",
-      resolve(web, "dist"),
+      // Installed-runtime acceptance must consume its bundled viewer, not
+      // silently qualify the newer checkout's assets instead.
+      ...(process.env.LENSMAP_TEST_SERVER
+        ? []
+        : ["--assets", resolve(web, "dist")]),
       "--zed",
       opener,
     ],
@@ -70,7 +73,7 @@ async function editor() {
     apiToken: string;
   }>("workspace/executeCommand", { command: "lensmap.session" });
   const uri = pathToFileURL(file).href;
-  let source = original;
+  let source = initial;
   let version = 1;
   const headers = { Authorization: `Bearer ${session.apiToken}` };
   const snapshot = async () =>
@@ -163,6 +166,84 @@ async function editor() {
     headers,
   };
 }
+
+test("authored hero conditions survive the LSP and live position edits preserve the preview", async ({
+  page,
+}) => {
+  const hero = await readFile(
+    new URL("../../site/src/maps/hero.lensmap", import.meta.url),
+    "utf8",
+  );
+  const f = await editor(hero);
+  try {
+    await f.go(page);
+    const snapshot = await f.snapshot();
+    const nameKey = snapshot.graph.nodes.find(
+      (node: { id: string }) => node.id === "lensmap",
+    ).key;
+    const docKey = snapshot.graph.nodes.find(
+      (node: { id: string }) => node.id === "documentation",
+    ).key;
+    const name = page.locator(`[data-node="${nameKey}"]`);
+    const docs = page.locator(`[data-node="${docKey}"]`);
+    const centre = async (node: ReturnType<Page["locator"]>) => {
+      const box = await node.boundingBox();
+      if (!box) throw Error("Missing live hero thought");
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    };
+    await expect
+      .poll(async () => (await centre(name)).x - (await centre(docs)).x)
+      .toBeGreaterThan(30);
+    await page.setViewportSize({ width: 390, height: 820 });
+    await expect
+      .poll(async () =>
+        Math.abs((await centre(name)).x - (await centre(docs)).x),
+      )
+      .toBeLessThan(1);
+    const beforeName = await centre(name);
+    const beforeDocs = await centre(docs);
+    const zoom = await page
+      .getByLabel("Zoom level", { exact: true })
+      .textContent();
+    const edited = hero.replace("--lensmap-y: -550;", "--lensmap-y: -350;");
+    await f.change(edited);
+    await expect(page.getByTestId("bridge-status")).toContainText("r2");
+    await expect
+      .poll(async () => (await centre(docs)).y)
+      .toBeGreaterThan(beforeDocs.y + 1);
+    const afterName = await centre(name);
+    expect(afterName.x).toBeCloseTo(beforeName.x, 3);
+    expect(afterName.y).toBeCloseTo(beforeName.y, 3);
+    expect(
+      await page.getByLabel("Zoom level", { exact: true }).textContent(),
+    ).toBe(zoom);
+    await expect(name).toHaveAttribute("aria-pressed", "true");
+    const retained = (await f.snapshot()).graph;
+    await f.change(
+      edited.replace(
+        "--lensmap-scale: 2.0;",
+        "--lensmap-scale: 2.0;\n          @media print { width: 2px; }",
+      ),
+    );
+    await expect(page.getByTestId("bridge-status")).toContainText("stale");
+    // The diagnostic banner moves the canvas on the page. Retain the actual
+    // graph and view rather than freezing document-level pixel coordinates.
+    expect((await f.snapshot()).graph).toEqual(retained);
+    await expect(docs).toBeVisible();
+    await expect(name).toHaveAttribute("aria-pressed", "true");
+    expect(
+      await page.getByLabel("Zoom level", { exact: true }).textContent(),
+    ).toBe(zoom);
+    await f.change(edited);
+    await expect(page.getByTestId("bridge-status")).toContainText("Live");
+    await page.screenshot({
+      path: "../../artifacts/checkpoints/responsive-viewer/lsp-hero-narrow.png",
+    });
+    expect(await readFile(f.file, "utf8")).toBe(hero);
+  } finally {
+    await f.close();
+  }
+});
 
 test("unsaved live source preserves exploration, keeps an invalid last map and follows a caret without taking focus", async ({
   page,

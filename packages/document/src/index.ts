@@ -4,7 +4,12 @@ import {
   resolveNodeStyle,
 } from "./node-style.js";
 
-export type { NodePresentation, NodeStyleDeclaration } from "./node-style.js";
+export type {
+  NodePresentation,
+  NodeStyleCondition,
+  NodeStyleDeclaration,
+} from "./node-style.js";
+export { resolveNodePresentation } from "./node-style.js";
 
 import {
   type ConnectionPresentation,
@@ -19,6 +24,7 @@ export * from "./vocabulary.js";
 import type { Node } from "yaml";
 import { isAlias, isMap, isScalar, parseDocument } from "yaml";
 import { z } from "zod";
+import { styleSourceSpan } from "./style-source.js";
 import {
   type ConnectionType,
   DocumentSchema,
@@ -269,7 +275,10 @@ export class DocumentSession {
   }
   analyze(): DocumentSnapshot {
     try {
-      const doc = parseDocument(this.text, { uniqueKeys: true });
+      const doc = parseDocument(this.text, {
+        uniqueKeys: true,
+        keepSourceTokens: true,
+      });
       const problem = [...doc.errors, ...doc.warnings][0];
       if (problem)
         throw Object.assign(new Error(`YAML: ${problem.message}`), {
@@ -343,8 +352,23 @@ export class DocumentSession {
               endOffset: value?.range?.[1] ?? key.range[1],
             });
         }
+        if (
+          isScalar(resolved) &&
+          "styleOffset" in failure &&
+          "styleEndOffset" in failure &&
+          typeof failure.styleOffset === "number" &&
+          typeof failure.styleEndOffset === "number"
+        ) {
+          const span = styleSourceSpan(
+            resolved,
+            failure.styleOffset,
+            failure.styleEndOffset,
+          );
+          if (span) return Object.assign(failure, span);
+        }
         return Object.assign(failure, {
-          offset: syntax?.range?.[0] ?? fallback,
+          offset: resolved?.range?.[0] ?? fallback,
+          endOffset: resolved?.range?.[1],
         });
       };
       const styleRules = new Map<string, ReturnType<typeof parseNodeStyle>>();

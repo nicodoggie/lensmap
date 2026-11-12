@@ -5,10 +5,11 @@
 This implements the initial node-styling discussion. Styling is presentation,
 not a node ontology or a change to connection types, navigation or permissions.
 Animations, keyframes, selectors and separate icon/background animation targets
-are deferred; a swirling portal is a future use case, not this slice.
+are deferred. Responsive additions described below are implemented locally but
+are not part of the published 0.3.0 cohort documented at the historical checkpoint.
 
-A rich node accepts optional `classes: string[]` and `style`. References retain the
-appearance of their target; a `node_id` occurrence cannot restyle that target.
+A rich node accepts optional `classes: string[]` and `style`. References retain
+the appearance of their target; a `node_id` occurrence cannot restyle that target.
 Strings and unstyled documents keep their existing behavior. Classes do not
 propagate through graph edges or authored nesting.
 
@@ -39,6 +40,10 @@ and retain the last valid graph with the normal stale indication.
   at the normal font size, including padding and icons; it never shrinks text.
 - `--lensmap-icon`: a CSS string or a plain text/emoji mapping value. Decorative
   icons supplement rather than replace mandatory destination indicators.
+- `--lensmap-x`, `--lensmap-y`: finite signed unitless world coordinates or `auto`.
+  CSS coordinates override the corresponding legacy `position` axis. An omitted
+  axis retains its legacy fallback; explicit `auto` releases it to automatic
+  layout. Either axis may be pinned independently.
 
 Use the installed maintained `css-tree` grammar. Reject unknown properties,
 unsafe token constructs, resource loading (`url`, image functions), CSS-wide
@@ -53,6 +58,40 @@ The initial profile does not accept CSS math functions (`calc`, `min`, `max`,
 their native grammar; negative hue/channel components are not negative lengths.
 Standard property names are case-insensitive; custom property names are exact.
 
+### Conditional declarations
+
+Inline CSS strings and named-rule CSS strings accept nested `@media` and unnamed
+size `@container` blocks. Their contents use the same supported declarations and
+validation, including inactive branches. YAML property mappings remain a plain
+property/value shorthand; use the CSS-string form for conditional blocks.
+
+```yaml
+version: v1
+nodes:
+  - summary: Documentation
+    style: |
+      --lensmap-x: 320;
+      --lensmap-y: 0;
+      @container (width < 700px) {
+        --lensmap-x: 0;
+        --lensmap-y: 260;
+        font-size: 24px;
+      }
+      @media (prefers-color-scheme: dark) { color: #e8eee2; }
+```
+
+Media queries use the browser viewport/preferences. Container size queries use
+this viewer's canvas, even inside a wide page. Conditional nesting is logical
+AND and adds no specificity: source order, class/inline precedence and important
+priority remain unchanged. Named containers, style/scroll-state queries,
+selectors, imports and executable content are not supported.
+
+The browser evaluates container queries in an isolated shadow probe sized to the
+actual canvas. The map itself does not acquire size containment or lose its
+intrinsic sizing. Matching changes update shared geometry without resetting the
+camera, selection, draft or history; pan/zoom never changes matching conditions.
+See [the responsive contract](responsive-node-styling.md) for the full boundary.
+
 ### Geometry and view ownership
 
 Authored size is independent of spatial lens magnification and camera zoom.
@@ -65,7 +104,8 @@ Project the resolved radius into automatic layout clearance, neighbourhood rings
 Overview extents, lens collision limiting, loops, both connector endpoints,
 continuation stubs and native hit bounds. Preserve explicit authored coordinates.
 Paint-only edits preserve coordinates, camera and selection. Geometry changes
-may recompute automatic placement but must not silently move authored pins.
+may recompute automatic placement; authored pins move only when an explicitly
+authored coordinate rule changes their effective constraints.
 Pan/zoom must not initiate world-layout recomputation.
 
 Author styles must not erase keyboard focus, selection/target cues or portal
@@ -77,14 +117,20 @@ host page or expanded host-rendered Markdown prose.
 `Thought.style?: NodePresentation` carries resolved presentation through normal
 semantic snapshots, the LSP bridge and Astro/Starlight data. Export:
 
-- `NodeStyleDeclaration = { property: string; value: string; important: boolean }`.
+- `NodeStyleCondition = { kind: "media" | "container"; query: string }`.
+- `NodeStyleDeclaration = { property: string; value: string; important: boolean;
+  conditions?: NodeStyleCondition[] }`.
 - `NodePresentation = { declarations: NodeStyleDeclaration[];
-  scale?: number | "auto"; icon?: string }`.
+  scale?: number | "auto"; icon?: string; x?: number | "auto";
+  y?: number | "auto"; rules?: NodeStyleDeclaration[] }`.
 
-The declaration list retains standard-property order and priority. `scale` and
-`icon` are the effective custom-property values; geometry remains a viewer
-concern. Custom declarations may remain in the list, but the renderer must not
-allow raw declarations to replace its own positioning/transform controls.
+The declaration list retains effective standard-property order and priority.
+Custom properties resolve into metadata, never DOM positioning/transform
+declarations. A conditional presentation also retains the complete ordered
+`rules` program; its initial metadata/appearance represent unconditional defaults.
+The public pure `resolveNodePresentation(rules, matches?)` helper resolves that
+program using a caller-supplied condition predicate, without a browser dependency.
+The LSP and static adapters transport the program rather than choosing a viewport.
 
 ## Qualification
 

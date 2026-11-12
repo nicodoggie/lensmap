@@ -7,6 +7,7 @@ import {
 } from "d3-force";
 import type { GraphData, GraphEdge, GraphNode } from "../graph";
 import type { Point } from "../lens";
+import { positionAxis } from "../node-style";
 import { planSubtree, type SubtreePlan } from "./subtree";
 
 export type NodeDraft = Omit<GraphNode, "x" | "y"> & { position?: Point };
@@ -53,16 +54,17 @@ export function layoutGraph(nodes: NodeDraft[], edges: GraphEdge[]): GraphData {
     heading: number,
     isRoot: boolean,
   ): void {
-    const actual = node.position ?? point;
-    const fixed = Boolean(node.position) || isRoot;
+    const pinX = positionAxis(node, "x");
+    const pinY = positionAxis(node, "y");
+    const actual = { x: pinX ?? point.x, y: pinY ?? point.y };
     placed.set(node.key, {
       key: node.key,
       x: actual.x,
       y: actual.y,
       targetX: actual.x,
       targetY: actual.y,
-      fx: fixed ? actual.x : undefined,
-      fy: fixed ? actual.y : undefined,
+      fx: pinX !== undefined || isRoot ? actual.x : undefined,
+      fy: pinY !== undefined || isRoot ? actual.y : undefined,
     });
     subtree.children.forEach((placement) => {
       const child = byKey.get(placement.subtree.key);
@@ -75,7 +77,10 @@ export function layoutGraph(nodes: NodeDraft[], edges: GraphEdge[]): GraphData {
         x: actual.x + Math.cos(angle) * placement.distance,
         y: actual.y + Math.sin(angle) * placement.distance,
       };
-      const childPoint = child.position ?? target;
+      const childPoint = {
+        x: positionAxis(child, "x") ?? target.x,
+        y: positionAxis(child, "y") ?? target.y,
+      };
       const direction =
         childPoint.x === actual.x && childPoint.y === actual.y
           ? angle
@@ -87,7 +92,10 @@ export function layoutGraph(nodes: NodeDraft[], edges: GraphEdge[]): GraphData {
   }
 
   // Multiple top-level ideas stay separate even if reference edges join them.
-  const anchor = nodes[0].position ?? { x: 0, y: 0 };
+  const anchor = {
+    x: positionAxis(nodes[0], "x") ?? 0,
+    y: positionAxis(nodes[0], "y") ?? 0,
+  };
   const rootRadius =
     roots.length > 1 ? (step * 2) / Math.sin(Math.PI / roots.length) : 0;
   roots.forEach((root, index) => {
