@@ -323,6 +323,30 @@ export class DocumentSession {
           );
         return vocabulary[type];
       };
+      const styleFailure = (
+        error: unknown,
+        syntax: Node | undefined,
+        fallback = 0,
+      ) => {
+        const failure =
+          error instanceof Error ? error : new Error(String(error));
+        const resolved = isAlias(syntax) ? syntax.resolve(doc) : syntax;
+        if (isMap(resolved) && "styleProperty" in failure) {
+          const pair = resolved.items.find(
+            ({ key }) => isScalar(key) && key.value === failure.styleProperty,
+          );
+          const key = pair?.key as Node | undefined;
+          const value = pair?.value as Node | undefined;
+          if (key?.range)
+            return Object.assign(failure, {
+              offset: key.range[0],
+              endOffset: value?.range?.[1] ?? key.range[1],
+            });
+        }
+        return Object.assign(failure, {
+          offset: syntax?.range?.[0] ?? fallback,
+        });
+      };
       const styleRules = new Map<string, ReturnType<typeof parseNodeStyle>>();
       const ruleSyntax = doc.get("node_styles", true);
       const resolvedRules = isAlias(ruleSyntax)
@@ -341,13 +365,9 @@ export class DocumentSession {
         try {
           styleRules.set(name, parseNodeStyle(style));
         } catch (error) {
-          throw Object.assign(
-            error instanceof Error ? error : new Error(String(error)),
-            {
-              offset:
-                (doc.getIn(["node_styles", name], true) as Node | undefined)
-                  ?.range?.[0] ?? 0,
-            },
+          throw styleFailure(
+            error,
+            doc.getIn(["node_styles", name], true) as Node | undefined,
           );
         }
       }
@@ -459,22 +479,18 @@ export class DocumentSession {
         try {
           style = resolveNodeStyle(content.classes, content.style, styleRules);
         } catch (error) {
-          throw Object.assign(
-            error instanceof Error ? error : new Error(String(error)),
-            {
-              offset:
-                (
-                  doc.getIn(
-                    [
-                      ...path,
-                      content.classes?.some((name) => !styleRules.has(name))
-                        ? "classes"
-                        : "style",
-                    ],
-                    true,
-                  ) as Node | undefined
-                )?.range?.[0] ?? span.start,
-            },
+          throw styleFailure(
+            error,
+            doc.getIn(
+              [
+                ...path,
+                content.classes?.some((name) => !styleRules.has(name))
+                  ? "classes"
+                  : "style",
+              ],
+              true,
+            ) as Node | undefined,
+            span.start,
           );
         }
         const thought: Thought = {
@@ -636,6 +652,10 @@ export class DocumentSession {
         typeof error === "object" && error !== null && "offset" in error
           ? Number(error.offset)
           : 0;
+      const endOffset =
+        typeof error === "object" && error !== null && "endOffset" in error
+          ? Number(error.endOffset)
+          : offset;
       const context = error as { uri?: string; source?: string };
       const diagnosticSource = context?.source ?? this.text;
       this.state = {
@@ -649,7 +669,7 @@ export class DocumentSession {
             message: error instanceof Error ? error.message : String(error),
             range: {
               start: offsetToPosition(diagnosticSource, offset),
-              end: offsetToPosition(diagnosticSource, offset),
+              end: offsetToPosition(diagnosticSource, endOffset),
             },
             ...(context?.uri ? { uri: context.uri } : {}),
           },

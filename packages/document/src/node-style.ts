@@ -147,20 +147,27 @@ export function parseNodeStyle(input: NodeStyle): NodeStyleDeclaration[] {
   };
   if (typeof input === "string") return parse(input);
   return Object.entries(input).flatMap(([property, value]) => {
-    if (!/^(?:--lensmap-(?:scale|icon)|[a-z-]+)$/i.test(property))
-      return fail(`Invalid property ${property}`);
-    const text =
-      property === "--lensmap-icon"
-        ? css.generate({ type: "String", value: String(value) })
-        : String(value);
-    const declarations = parse(`${property}:${text}`);
-    if (
-      declarations.length !== 1 ||
-      declarations[0].property !==
-        (property.startsWith("--") ? property : property.toLowerCase())
-    )
-      fail("Mapping values must contain one declaration value");
-    return declarations;
+    try {
+      if (!/^(?:--lensmap-(?:scale|icon)|[a-z-]+)$/i.test(property))
+        return fail(`Invalid property ${property}`);
+      const text =
+        property === "--lensmap-icon"
+          ? css.generate({ type: "String", value: String(value) })
+          : String(value);
+      const declarations = parse(`${property}:${text}`);
+      if (
+        declarations.length !== 1 ||
+        declarations[0].property !==
+          (property.startsWith("--") ? property : property.toLowerCase())
+      )
+        fail("Mapping values must contain one declaration value");
+      return declarations;
+    } catch (error) {
+      throw Object.assign(
+        error instanceof Error ? error : new Error(String(error)),
+        { styleProperty: property },
+      );
+    }
   });
 }
 /** Low-to-high cascade order preserves shorthand interactions for browser application. */

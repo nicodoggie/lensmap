@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { DocumentSession } from "./index.js";
+import { DocumentSession, positionToOffset } from "./index.js";
 
 const snapshot = (style: unknown, extra = {}) =>
   new DocumentSession(
@@ -89,6 +89,33 @@ it("locates failures and retains/recover last valid graph", () => {
   expect(bad.graph).toEqual(before);
   expect(bad.diagnostics[0].range.start.line).toBe(3);
   expect(session.update(good, 2).valid).toBe(true);
+});
+it.each([
+  [
+    "inline mapping",
+    'version: v1\nnodes:\n  - summary: X\n    style:\n      background-color: red\n      connections: "test"\n',
+  ],
+  [
+    "shared mapping",
+    'version: v1\nnode_styles:\n  broken:\n    background-color: red\n    connections: "test"\nnodes: [X]\n',
+  ],
+  [
+    "aliased mapping",
+    'version: v1\nfrontmatter:\n  appearance: &appearance\n    background-color: red\n    connections: "test"\nnodes:\n  - summary: X\n    style: *appearance\n',
+  ],
+])("locates the offending declaration in an %s", (_name, source) => {
+  const result = new DocumentSession("test", source).snapshot();
+  expect(result.valid).toBe(false);
+  const diagnostic = result.diagnostics[0];
+  expect(diagnostic.message).toBe(
+    "Node style: Unsupported property connections",
+  );
+  expect(
+    source.slice(
+      positionToOffset(source, diagnostic.range.start),
+      positionToOffset(source, diagnostic.range.end),
+    ),
+  ).toBe('connections: "test"');
 });
 it("rejects unknown classes, duplicate mapping keys and reference restyling", () => {
   for (const source of [

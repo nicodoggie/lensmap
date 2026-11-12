@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   type CompletionItem,
   createMessageConnection,
+  type PublishDiagnosticsParams,
   StreamMessageReader,
   StreamMessageWriter,
 } from "vscode-languageserver/node";
@@ -24,6 +25,10 @@ afterEach(async () => {
 
 it("transports node styles through live analysis and retains last-valid styling", async () => {
   const f = await fixture();
+  const diagnostics: PublishDiagnosticsParams[] = [];
+  f.client.onNotification("textDocument/publishDiagnostics", (value) => {
+    diagnostics.push(value);
+  });
   await f.open();
   const text = `version: v1
 node_styles:
@@ -32,7 +37,7 @@ nodes:
   - id: alpha
     summary: Alpha
     classes: [highlighted]
-    style: {color: blue, --lensmap-icon: "★"}
+    style: {--lensmap-icon: "★", color: blue}
 `;
   const first = await f.change(text, 2);
   expect(first.valid).toBe(true);
@@ -46,13 +51,27 @@ nodes:
     ),
   ).toEqual(["red", "blue"]);
   const key = first.graph.nodes[0].key;
-  const invalid = await f.change(
-    text.replace("color: blue", "color: url(unsafe)"),
-    3,
-  );
+  const invalidText = text.replace("color: blue", "color: url(unsafe)");
+  const invalid = await f.change(invalidText, 3);
   expect(invalid.valid).toBe(false);
   expect(invalid.graph).toEqual(first.graph);
   expect(invalid.diagnostics[0].range.start.line).toBe(7);
+  await expect
+    .poll(() => diagnostics.filter((item) => item.uri === uri).at(-1))
+    .toMatchObject({
+      uri,
+      version: 3,
+      diagnostics: [{ severity: 1, source: "lensmap" }],
+    });
+  const range = diagnostics.at(-1)?.diagnostics[0].range;
+  expect(range).toBeDefined();
+  if (!range) throw Error("Expected an editor diagnostic range");
+  expect(
+    invalidText.slice(
+      positionToOffset(invalidText, range.start),
+      positionToOffset(invalidText, range.end),
+    ),
+  ).toBe("color: url(unsafe)");
   const recovered = await f.change(
     text.replace("color: blue", "color: green"),
     4,
@@ -62,6 +81,9 @@ nodes:
   expect(recovered.graph.nodes[0].style.declarations.at(-1).value).toBe(
     "green",
   );
+  await expect
+    .poll(() => diagnostics.filter((item) => item.uri === uri).at(-1))
+    .toMatchObject({ uri, version: 4, diagnostics: [] });
 });
 
 async function fixture(showDocument = false, projectRoot?: string) {
