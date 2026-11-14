@@ -14,6 +14,9 @@ or through nesting, and references retain their target's appearance.
 ```yaml
 version: v1
 node_styles:
+  "*":
+    font-family: "system-ui, sans-serif"
+    color: "#e7eef4"
   clue:
     background-color: "#3b3430"
     color: "#fff1cd"
@@ -26,11 +29,20 @@ nodes:
     style: "color: #b5e6d2; border-style: dashed;"
 ```
 
-A style can be a CSS declaration string or an ordered YAML mapping. Class rules
+A style can be a CSS declaration string or an ordered YAML mapping. Named rules
 follow their declaration order in `node_styles`, not the order of names in
 `classes`. Inline declarations have higher specificity; CSS `!important` keeps
 its priority. Repeated CSS-string declarations are allowed; duplicate YAML keys
 are errors.
+
+The quoted `"*"` rule supplies defaults to **every node**, even shorthand strings
+and nodes without `classes`. Named classes override normal defaults; inline
+styles have higher specificity still. `!important` keeps its priority across all
+three levels. The default applies first regardless of its dictionary position,
+and does not need to be listed in a node's `classes`.
+
+This is a reserved default rule, not a general CSS selector or glob language.
+It styles nodes in this document, not the toolbar, inspector or host page.
 
 ## Make room for a longer summary
 

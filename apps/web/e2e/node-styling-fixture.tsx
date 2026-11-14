@@ -29,6 +29,8 @@ export function mountResponsive(targeted = false, fluidTypography = false) {
   if (!element) throw Error("Missing responsive root");
   element.style.width = targeted ? "390px" : "900px";
   responsiveSource = `version: v1
+node_styles:
+  "*": {color: "#b5e6d2"}
 nodes:
   - id: root
     summary: Root

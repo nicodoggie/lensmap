@@ -21,12 +21,43 @@ CSS `!important` priority. Duplicate YAML keys are errors; repeated CSS
 declarations are available in the string form.
 
 Top-level `node_styles` maps class names to either style form. This is a named
-rule dictionary, not a CSS selector language. All class rules have equal
+rule dictionary, not a CSS selector language. Named class rules have equal
 specificity and apply in their declaration order in `node_styles`, independent
 of the order of names in `classes`. Inline declarations have higher specificity;
-important declarations beat normal declarations across both origins. Unknown
+important declarations beat normal declarations across all origins. Unknown
 classes and invalid/unsupported declarations produce source-located diagnostics
 and retain the last valid graph with the normal stale indication.
+
+### Default node styling
+
+The reserved `"*"` entry automatically supplies defaults to every thought in the
+document, including shorthand strings, nested/placeholder thoughts and portals.
+Quote the key in YAML: an unquoted `*` starts alias syntax. Nodes do not need to
+list `"*"` in `classes`; explicitly listing it does not apply it a second time.
+
+```yaml
+version: v1
+node_styles:
+  "*":
+    color: "#e7eef4"
+    font-family: "system-ui, sans-serif"
+  clue:
+    color: "#fff1cd"
+nodes:
+  - A thought using the defaults
+  - summary: A clue
+    classes: [clue]
+```
+
+Specificity is default rule, then named classes, then inline styles, regardless
+of where `"*"` appears in the dictionary. Important priority still comes first:
+a default important declaration wins over a normal inline declaration; among
+important declarations, the same specificity order applies. Defaults use the
+same supported declaration forms and can contain conditional CSS blocks.
+
+This is one reserved dictionary entry, not wildcard matching or general CSS
+selectors. Defaults do not style the surrounding page or introduce inheritance
+between thoughts. References still retain their target's resolved appearance.
 
 ### Initial CSS profile
 

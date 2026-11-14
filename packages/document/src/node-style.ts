@@ -293,9 +293,13 @@ export function resolveNodeStyle(
   for (const name of classes ?? [])
     if (!rules.has(name)) fail(`Unknown class ${name}`);
   const selected = new Set(classes);
-  const declarations = [...rules]
-    .filter(([name]) => selected.has(name))
-    .flatMap(([, values]) => values);
+  // Universal defaults have lower specificity, independent of dictionary order.
+  const declarations = [
+    ...(rules.get("*") ?? []),
+    ...[...rules]
+      .filter(([name]) => name !== "*" && selected.has(name))
+      .flatMap(([, values]) => values),
+  ];
   declarations.push(...(inline === undefined ? [] : parseNodeStyle(inline)));
   return resolveNodePresentation(declarations);
 }

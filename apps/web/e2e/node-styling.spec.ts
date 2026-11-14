@@ -60,6 +60,8 @@ test("container and media rules update real geometry while preserving view and s
   );
   const root = page.locator('[data-node="thought:1"]');
   const child = page.locator('[data-node="thought:2"]');
+  await expect(root).toHaveCSS("color", "rgb(181, 230, 210)");
+  await expect(child).toHaveCSS("color", "rgb(0, 0, 0)");
   await expect(child).toHaveCSS("font-size", "18px");
   await expect(child).toHaveCSS("border-top-color", "rgb(0, 0, 255)");
   await expect
