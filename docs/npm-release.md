@@ -1,5 +1,15 @@
 # npm package preparation and releases
 
+## 0.4.0 release candidate
+
+Nico authorized releasing the four-package cohort as **0.4.0** directly to
+**latest**. Versioned qualification and registry publication are in progress;
+this heading does not claim public availability. See
+[the 0.4.0 notes](releases/0.4.0.md) for default node styles, responsive styling,
+world-coordinate positioning, diagnostic/auto-sizing fixes and upgrade pins.
+Use the established qualified local-tarball path; do not push an `npm-v*` tag
+to start a second publisher. The unrelated shape/layout draft is excluded.
+
 ## Published presentation/vocabulary cohort (0.3.0)
 
 `@lensmap/document`, `@lensmap/language-server`, `@lensmap/astro-loader` and
@@ -45,8 +55,8 @@ remain alongside those receipts.
 `@lensmap/document`, `@lensmap/language-server`, `@lensmap/astro-loader` and
 `@lensmap/starlight` were published at **0.2.1**, with **latest** pointing to that
 version for all four packages at the time. They remain experimental packages.
-Publication and registry-only consumption were verified on **2026-11-07** against retained
-tarballs from source commit `ba247954d3b8a20dc740229fca2bbbcefa7a7f85`.
+Publication and registry-only consumption were verified on **2026-11-07** against
+retained tarballs from source commit `ba247954d3b8a20dc740229fca2bbbcefa7a7f85`.
 See the [shipping plan](plans/2026-11-07-astro-packages.md) for the original scope.
 
 The public registry's package identities, versions, dependencies and SHA512
@@ -167,17 +177,19 @@ command alone.
 `.github/workflows/npm-release.yml` separates publishing from promotion:
 
 - **Push an `npm-v…` tag:** checks and package acceptance run first, retaining
-  tarballs as `npm-packages`. All four manifests must have the same version, and the
-  tag must match it. The publish job downloads those same verified artifacts
-  without rebuilding, then publishes **document → language-server → astro-loader → starlight**,
+  tarballs as `npm-packages`. All four manifests must have the same version, and
+  the tag must match it. The publish job downloads those same verified artifacts
+  without rebuilding, then publishes
+  **document → language-server → astro-loader → starlight**,
   explicitly public and with **latest**. Routine releases need no separate
-  promotion; historical tags are left alone unless an explicit operation changes them.
+  promotion; historical tags are left alone unless an explicit operation changes
+  them.
 - After each accepted publish, read-only readiness checks tolerate npm's
   processing delay and require the registry integrity to match the verified
   tarball. They retry missing-version reads, never the publication itself.
-- **Run workflow, neither promotion nor server recovery selected:** performs the same verification and
-  retains tarballs, but never publishes or changes tags. The checkbox defaults
-  to off; the version input is ignored in this mode.
+- **Run workflow, neither promotion nor server recovery selected:** performs the
+  same verification and retains tarballs, but never publishes or changes tags.
+  The checkbox defaults to off; the version input is ignored in this mode.
 - **Run workflow, Update latest checked:** enter an exact already-published
   version such as `0.1.0`. Run from `main` with the current workflow/helper; the
   target version need not match the checkout's manifests. Only the promotion
@@ -206,10 +218,11 @@ those account settings.
 Registry-write jobs use GitHub-hosted Ubuntu, Node 24 and pinned npm **11.21.0**.
 OIDC dist-tag support requires npm 11.21.0+ on the 11.x line (or 12.2.0+);
 the previous npm 11.20.0 publish client was insufficient for promotion. Only the
-publish, recovery and promote jobs receive `id-token: write`; no long-lived npm token is
-required or added. Public GitHub repository/package OIDC publication generates
-provenance automatically. Promotion only changes tags and does not regenerate
-package bytes or provenance. See [npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
+publish, recovery and promote jobs receive `id-token: write`; no long-lived npm
+token is required or added. Public GitHub repository/package OIDC publication
+generates provenance automatically. Promotion only changes tags and does not
+regenerate package bytes or provenance. See
+[npm's trusted publishing documentation](https://docs.npmjs.com/trusted-publishers/).
 
 ### Local promotion verification and recovery
 
@@ -230,7 +243,8 @@ mutations are never automatically retried.
 Dist-tag updates are **not transactional across packages**. If a later
 update fails, earlier updates may already be live. The job reports completed writes
 and the previous tag snapshots; it does not attempt an automatic rollback.
-Inspect the actual tags of every selected package before rerunning or selecting the previous version.
+Inspect the actual tags of every selected package before rerunning or selecting
+the previous version.
 Rerunning the same promotion skips already-matching tags. A readback mismatch
 or concurrent `next` change fails rather than claiming a complete promotion.
 
@@ -256,9 +270,10 @@ local package tests or by creating this workflow:
    no account settings are installed by this repository. The original tagged
    `0.1.0` run verified artifacts but failed publication with `ENEEDAUTH`;
    subsequent authorized local publication completed the bootstrap.
-3. For subsequent cohort releases, update all four package versions, run the checks, commit,
-   and only with push/publication authorization create/push the matching `npm-v…`
-   tag. Do not tag an already bootstrapped version and expect it to republish.
+3. For subsequent cohort releases, update all four package versions, run the
+   checks, commit, and only with push/publication authorization create/push the
+   matching `npm-v…` tag. Do not tag an already bootstrapped version and expect
+   it to republish.
 4. After a release, install the exact server version from npm in a clean consumer
    and exercise the editor path before calling Zed distribution qualified. Local
    paired-tarball installation does not prove registry dependency availability.
